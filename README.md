@@ -7,7 +7,7 @@
 - I suggest that you use wandb for tracking the experiments and have on-the-fly plots of the valid and train metrics, otherwise set it to False (`use_wandb`).
 - To start the training stage, run:
 ```
-python main.py --data_path MY_PATH_TO_DATASET --path_to_save_model PATH_TO_SAVE_MODEL 
+python main_offline.py --data_path MY_PATH_TO_DATASET --path_to_save_model PATH_TO_SAVE_MODEL 
 ```
 
 
