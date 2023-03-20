@@ -19,5 +19,5 @@ python main.py --data_path MY_PATH_TO_DATASET --path_to_best_model PATH_TO_BEST_
 
 The last step is to get the metrics values, using the script by the authors of the original SLURP dataset. Given that the output dictionary containing the predicted transcriptions is located at PATH_TO_PREDICTIONS, run: 
 ```
-python evaluate.py -g <PATH_TO_GOLD> -p <PATH_TO_PREDICTIONS --load-gold>
+python evaluate.py -g <PATH_TO_GOLD> -p <PATH_TO_PREDICTIONS> --load-gold
 ```
