@@ -14,7 +14,7 @@ python main_offline.py --data_path MY_PATH_TO_DATASET --path_to_save_model PATH_
 At the end of the training, we will have the saved model after each epoch. Based on the validation metrics, you can pick the model that performed the best and use it for testing purposes. Be aware that the beam width is set to 20 by default, but it can be changed to a desired value. So, to run the test stage:
 
 ```
-python main.py --data_path MY_PATH_TO_DATASET --path_to_best_model PATH_TO_BEST_MODEL 
+python test_beamsearch_BPE.py --data_path MY_PATH_TO_DATASET --path_to_best_model PATH_TO_BEST_MODEL 
 ```
 
 The last step is to get the metrics values, using the script by the authors of the original SLURP dataset. Given that the output dictionary containing the predicted transcriptions is located at PATH_TO_PREDICTIONS, run: 
