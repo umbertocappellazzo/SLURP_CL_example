@@ -17,7 +17,7 @@ At the end of the training, we will have the saved model after each epoch. Based
 python test_beamsearch_BPE.py --data_path MY_PATH_TO_DATASET --path_to_best_model PATH_TO_BEST_MODEL 
 ```
 
-The last step is to get the metrics values, using the script by the authors of the original SLURP dataset. Given that the output dictionary containing the predicted transcriptions is located at PATH_TO_PREDICTIONS, run: 
+The last step is to get the metrics values, using the script by the authors of the original SLURP dataset. Given that the output dictionary containing the predicted transcriptions is located at PATH_TO_PREDICTIONS, and PATH_TO_GOLD is the path to the jsonl gold files (e.g., test.jsonl), run: 
 ```
 python evaluate.py -g <PATH_TO_GOLD> -p <PATH_TO_PREDICTIONS> --load-gold
 ```
