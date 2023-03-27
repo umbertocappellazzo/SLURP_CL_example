@@ -705,16 +705,17 @@ def main(args):
     
    
     
-    dataset_train = Slurp(args.data_path, max_len_text=args.max_len_text, train="train", download=False)
-    dataset_valid = Slurp(args.data_path, max_len_text=args.max_len_text, train="valid", download=False)
-    dataset_test = Slurp(args.data_path, max_len_text=args.max_len_text, train=False, download=False)
+    dataset_train = Slurp(args.data_path, max_len_audio = args.max_len_audio, max_len_text=args.max_len_text, train="train", download=False)
+    dataset_valid = Slurp(args.data_path, max_len_audio = args.max_len_audio,max_len_text=args.max_len_text, train="valid", download=False)
+    dataset_test = Slurp(args.data_path, max_len_audio = args.max_len_audio,max_len_text=args.max_len_text, train=False, download=False)
     
     
     if args.offline_train:   # Create just 1 task with all classes.
-       
-        scenario_train = ClassIncremental(dataset_train,nb_tasks=1)#,transformations=[partial(trunc, max_len=args.max_len)])
-        scenario_valid = ClassIncremental(dataset_valid,nb_tasks=1)#,transformations=[partial(trunc, max_len=args.max_len)])
-        scenario_test = ClassIncremental(dataset_test,nb_tasks=1)
+        
+        # Added Splitting Crit = None
+        scenario_train = ClassIncremental(dataset_train,nb_tasks=1, splitting_crit=None)#,transformations=[partial(trunc, max_len=args.max_len)])
+        scenario_valid = ClassIncremental(dataset_valid,nb_tasks=1, splitting_crit=None)#,transformations=[partial(trunc, max_len=args.max_len)])
+        scenario_test = ClassIncremental(dataset_test,nb_tasks=1, splitting_crit=None)
     else:
         
         scenario_train = ClassIncremental(dataset_train,increment=args.increment,initial_increment=args.initial_increment,)
@@ -771,8 +772,11 @@ def main(args):
             #                   out_chan=args.out_chan, hid_chan=args.hid_chan,kernel_size=args.kernel_size,
             #                   device=device).to(device)  
             
+            # Default:
+            #dims = ModelDimensions(args.n_mels, args.kernel_size, args.n_hidden_audio, args.n_head_audio, args.n_layer_audio, args.n_vocab, args.n_hidden_text, args.n_head_text, args.n_layer_text, args.drop, args.n_feedforward)
             
-            dims = ModelDimensions(args.n_mels, args.kernel_size, args.n_hidden_audio, args.n_head_audio, args.n_layer_audio, args.n_vocab, args.n_hidden_text, args.n_head_text, args.n_layer_text, args.drop, args.n_feedforward)
+            # Test Dims
+            dims = ModelDimensions(args.n_mels, args.kernel_size, args.n_hidden_audio, args.n_head_audio, args.n_layer_audio, args.n_vocab, args.n_hidden_text, n_head_text=1, n_layer_text=1, drop=args.drop, n_feedforward=768*2)
             
             assert (args.n_hidden_audio % args.n_head_audio) == 0, ('Hidden dimension of encoder must be divisible by number of audio heads!')
             assert (args.n_hidden_text % args.n_head_text) == 0, ('Hidden dimension of decoder must be divisible by number of text heads!')
@@ -943,6 +947,8 @@ def main(args):
                 
                 loss.backward()
                 optimizer.step()
+                break
+            break
                 
                 
                 

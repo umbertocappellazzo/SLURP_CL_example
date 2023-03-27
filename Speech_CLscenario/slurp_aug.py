@@ -5,7 +5,7 @@ Created on Tue Jan 24 18:53:12 2023
 
 @author: umbertocappellazzo
 """
-
+from tqdm import tqdm
 import os
 from Speech_CLscenario.base_dataset import _ContinuumDataset
 #from base_dataset import _ContinuumDataset
@@ -38,7 +38,7 @@ class Slurp(_ContinuumDataset):
     def get_data(self):
         
         # Below specify the path to the SLURP wavs. It can be the same as data_path.
-        path_to_wavs = "/data/cappellazzo/slurp"
+        path_to_wavs = "/home/ste/Internship/Code/SLURP_CL_example/dataset"
         x, y, transcriptions = [], [], []  # For now ENTITIES are not taken into account.
         #digits = ['0','1','2','3','4','5','6','7','8','9'] 
         
@@ -48,7 +48,7 @@ class Slurp(_ContinuumDataset):
         
         with open(os.path.join(self.data_path, f"{self.train}_intents.csv")) as f:
             lines = f.readlines()[1:]
-        for line in lines:
+        for line in tqdm(lines):
             items = line[:-1].split(';')
             
             transcription = items[3].lower()
@@ -68,7 +68,7 @@ class Slurp(_ContinuumDataset):
                 #pathh = os.path.join(self.data_path,'slurp_real', items[2])
                 #x.append(os.path.join(path_to_wavs,'slurp_real', items[2]))
                 pathh = os.path.join(path_to_wavs,'slurp_real', items[2])
-            
+            # print(pathh)
             wav = soundfile.read(pathh)[0]
             #skip = False
             #if any((c in digits) for c in transcription):

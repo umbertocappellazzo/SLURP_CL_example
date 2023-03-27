@@ -64,7 +64,8 @@ class ClassIncremental(_BaseScenario):
             unique_classes = np.unique(y)
         else:
             if self.splitting_crit == 'scenario':
-                unique_classes = np.unique(y[:, 0])
+                # unique_classes = np.unique(y[:, 0])
+                unique_classes = np.unique(y[:])
             else:
                 unique_classes = np.unique(y[:, 1])
             
@@ -75,7 +76,8 @@ class ClassIncremental(_BaseScenario):
             elif self.splitting_crit is None:
                 self.class_order = np.arange(np.max(y) + 1)
             elif self.splitting_crit == 'scenario':
-                self.class_order = np.arange(np.max(y[:, 0]) + 1)
+                # self.class_order = np.arange(np.max(y[:, 0]) + 1)
+                self.class_order = np.arange(np.max(y[:]) + 1)
             else: 
                 self.class_order = np.arange(np.max(y[:, 1]) + 1)
                                               
@@ -100,7 +102,8 @@ class ClassIncremental(_BaseScenario):
         else:
             if self.splitting_crit == 'scenario':
                 new_y = np.copy(y)
-                new_y[:, 0] = self.class_order.argsort()[y[:, 0].astype(np.int64)]
+                # new_y[:, 0] = self.class_order.argsort()[y[:, 0].astype(np.int64)]
+                new_y[:] = self.class_order.argsort()[y[:, 0].astype(np.int64)]
             else:
                 new_y = np.copy(y)
                 new_y[:, 1] = self.class_order.argsort()[y[:, 1].astype(np.int64)]
