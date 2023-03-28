@@ -158,17 +158,17 @@ class Seq2SeqTransformer(nn.Module):
     def append_prompt(self, x):
         x = self.prompt(x)
         print(x)
-        return x
+        return x['prompted_embedding']
    
     def forward(self, src, target, tgt_mask = None, tgt_key_padding_mask = None):
         
         if self.normalize_wav:
             src = F.layer_norm(src, src.shape[1:])
         
-        x_enc = self.wav2vec(src)[0] # Audio Embedding
+        prompted_src = self.append_prompt(src) # Adding Prompts to the audio source
 
-        # Now we need to process the Audio embedding Adding Prompts
-        x_enc = append_prompt(x_enc)
+
+        x_enc = self.wav2vec(prompted_src)[0] # Audio Embedding
 
 
 

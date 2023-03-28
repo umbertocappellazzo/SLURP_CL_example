@@ -2,6 +2,7 @@ import argparse
 import main_offline
 from model_prompt import ModelDimensions, Seq2SeqTransformer
 from prompt import PromptArgs
+
 parser = argparse.ArgumentParser('CiCL for Spoken Language Understandig (Intent classification) on FSC: train and evaluation',
                                     parents=[main_offline.get_args_parser()])
 args = parser.parse_args()
@@ -30,4 +31,5 @@ prompr_args = PromptArgs(length=5,
                          prompt_key_init='uniform')
 
 model = Seq2SeqTransformer(dims=dims, prompt_args=prompr_args)
+
 print(model)
