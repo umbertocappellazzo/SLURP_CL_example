@@ -12,9 +12,9 @@ class PromptArgs:
     embed_dim: int = 768
     embedding_key: str = 'mean'
     prompt_init: str ='uniform'
-    prompt_pool: bool = False
+    prompt_pool: bool = True
     prompt_key: bool = False
-    pool_size = None
+    pool_size: int = None
     top_k: int = None
     batchwise_prompt: bool = False
     prompt_key_init: str = 'uniform'

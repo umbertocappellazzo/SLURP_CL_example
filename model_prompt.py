@@ -16,7 +16,7 @@ from torch import Tensor
 from torch import nn
 import random
 from transformers import  Wav2Vec2Model, Wav2Vec2FeatureExtractor
-from .prompt import Prompt, PromptArgs
+from prompt import Prompt, PromptArgs
 
 # Model DataClass (Should be extended with Prompt Module Dimensions)
 
@@ -168,7 +168,8 @@ class Seq2SeqTransformer(nn.Module):
         x_enc = self.wav2vec(src)[0] # Audio Embedding
 
         # Now we need to process the Audio embedding Adding Prompts
-        x_prompt = append_prompt(x_enc)
+        x_enc = append_prompt(x_enc)
+
 
 
         
