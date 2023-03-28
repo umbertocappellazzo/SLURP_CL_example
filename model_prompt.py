@@ -68,11 +68,13 @@ class PositionalEncoding(nn.Module):
 class Seq2SeqTransformer(nn.Module):
     def __init__(self, 
                  dims: ModelDimensions,
+                 prompt_args=PromptArgs,
                  device="cuda",):
         
         super().__init__()
         
-        
+        # Prompting Part
+        self.prompt = Prompt(prompt_args)
         
         self.device = device
         self.dims = dims
@@ -153,15 +155,22 @@ class Seq2SeqTransformer(nn.Module):
         return self.classif_dec(dec_out)
         
         
-        
-    
-    
+    def append_prompt(self, x):
+        x = self.prompt(x)
+        print(x)
+        return x
+   
     def forward(self, src, target, tgt_mask = None, tgt_key_padding_mask = None):
         
         if self.normalize_wav:
             src = F.layer_norm(src, src.shape[1:])
         
-        x_enc = self.wav2vec(src)[0]
+        x_enc = self.wav2vec(src)[0] # Audio Embedding
+
+        # Now we need to process the Audio embedding Adding Prompts
+        x_prompt = append_prompt(x_enc)
+
+
         
         x_dec = self.token_embedding(target) * math.sqrt(self.dims.n_hidden_text)
         x_dec = self.positional_encoder(x_dec)
