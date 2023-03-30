@@ -17,9 +17,8 @@ class PromptArgs:
     pool_size: int = None
     top_k: int = None
     batchwise_prompt: bool = False
-    prompt_key_init: str = 'uniform'
-
-
+    prompt_key_init: str = 'uniform'  
+    
 class Prompt(nn.Module):
     def __init__(self, args: PromptArgs):
         super().__init__()
@@ -64,7 +63,6 @@ class Prompt(nn.Module):
     
     def forward(self, x_embed, prompt_mask=None, cls_features=None):
         out = dict()
-        print(f"x_embed shape:{x_embed.size()}")
         if self.prompt_pool:
             if self.embedding_key == 'mean':
                 x_embed_mean = torch.mean(x_embed, dim=1)
@@ -79,21 +77,14 @@ class Prompt(nn.Module):
                     x_embed_mean = cls_features
             else:
                 raise NotImplementedError("Not supported way of calculating embedding keys!")
-            
+
             prompt_norm = self.l2_normalize(self.prompt_key, dim=1) # Pool_size, C
-            print(f"prompt key size: {self.prompt_key.size()} ---> prompt norm:  {prompt_norm.size()}")
-            print(f"x_embed_mean shape:{x_embed_mean.size()}, {x_embed_mean}")
-            #x_embed_norm = self.l2_normalize(x_embed_mean, dim=1) # B, C
-            x_embed_norm = self.l2_normalize(x_embed_mean, dim=None)
+            x_embed_norm = self.l2_normalize(x_embed_mean, dim=1) # B, C
+
             similarity = torch.matmul(x_embed_norm, prompt_norm.t()) # B, Pool_size
-            #similarity = torch.matmul(x_embed_norm, prompt_norm)
-            print(f"Similarity shape: {similarity.size()}")
+            
             if prompt_mask is None:
-                
-                _, idx = torch.topk(similarity, k=self.top_k, dim=0) # B, top_k
-                print(f"SIMILARITY {similarity.size()}:")
-                print(similarity)
-                print(f"IDX:{idx}")
+                _, idx = torch.topk(similarity, k=self.top_k, dim=1) # B, top_k
                 if self.batchwise_prompt:
                     prompt_id, id_counts = torch.unique(idx, return_counts=True, sorted=True)
                     # In jnp.unique, when the 'size' is specified and there are fewer than the indicated number of elements,
@@ -123,9 +114,7 @@ class Prompt(nn.Module):
             # Put pull_constraint loss calculation inside
             batched_key_norm = prompt_norm[idx] # B, top_k, C
             out['selected_key'] = batched_key_norm
-            print()
-            print(f"x_embed_norm shape:{x_embed_norm.size()}")
-            #x_embed_norm = x_embed_norm.unsqueeze(1) # B, 1, C
+            x_embed_norm = x_embed_norm.unsqueeze(1) # B, 1, C
             sim = batched_key_norm * x_embed_norm # B, top_k, C
             reduce_sim = torch.sum(sim) / x_embed.shape[0] # Scalar
 
