@@ -20,6 +20,7 @@ class PromptAST(nn.Module):
         self.body_layer = body_layer
         self.layer_norm = leayer_norm
         self.n_prompts = n_prompts
+ 
         self.hidden_size = hidden_size
         self.prompt = Prompt(prompt_args)
 
