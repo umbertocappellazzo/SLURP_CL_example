@@ -19,13 +19,17 @@ class PromptAST(nn.Module):
         self.layer_norm = layer_norm
         self.prompt = Prompt(prompt_args)
 
-    def forward(self, x):
+    def forward(self, input_values):
 
-        x = self.emb_layer(x)
-
+        x = self.emb_layer(input_values)
+        print("embedding size")
+        print(x.size())
         x_prompted = self.prompt(x)['prompted_embedding']
+        print("prompted embedding size:")
+        print(x_prompted.size())
         body_output = self.body_layer(x_prompted)
-        out = self.layer_norm(body_output)
+        # print(f"body output: {body_output}")
+        out = self.layer_norm(body_output.last_hidden_state)
 
         return out
 
@@ -54,6 +58,13 @@ def main():
                     body_layer = model._modules['encoder'],
                     layer_norm = model._modules['layernorm'],
                     prompt_args = prompt_args)
-    print(ast)
+    # print(ast)
+    inputs = processor(dataset[3]["audio"]["array"], sampling_rate=sampling_rate, return_tensors="pt")
+    print(inputs)
+    with torch.no_grad():
+        outputs = ast(**inputs)
+        last_hidden_states = outputs
+    print(list(last_hidden_states.shape))
+
 if __name__=='__main__':
     main()
