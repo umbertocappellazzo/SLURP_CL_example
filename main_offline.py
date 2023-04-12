@@ -705,9 +705,9 @@ def main(args):
     
    
     
-    dataset_train = Slurp(args.data_path, max_len_text=args.max_len_text, train="train", download=False)
-    dataset_valid = Slurp(args.data_path, max_len_text=args.max_len_text, train="valid", download=False)
-    dataset_test = Slurp(args.data_path, max_len_text=args.max_len_text, train=False, download=False)
+    dataset_train = Slurp(args.data_path, max_len_text=args.max_len_text, max_len_audio=args.max_len_audio, train="train", download=False)
+    dataset_valid = Slurp(args.data_path, max_len_text=args.max_len_text, max_len_audio=args.max_len_audio, train="valid", download=False)
+    dataset_test = Slurp(args.data_path, max_len_text=args.max_len_text, max_len_audio=args.max_len_audio,train=False, download=False)
     
     
     if args.offline_train:   # Create just 1 task with all classes.
