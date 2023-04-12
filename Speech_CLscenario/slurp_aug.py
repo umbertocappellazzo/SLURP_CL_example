@@ -36,8 +36,6 @@ class Slurp(_ContinuumDataset):
         
     
     def get_data(self):
-        
-        # Below specify the path to the SLURP wavs. It can be the same as data_path.
         path_to_wavs = "/data/cappellazzo/slurp"
         x, y, transcriptions = [], [], []  # For now ENTITIES are not taken into account.
         #digits = ['0','1','2','3','4','5','6','7','8','9'] 
