@@ -5,8 +5,8 @@ from torch.optim import Adam, AdamW
 from Speech_CLscenario.fluentspeech import FluentSpeech
 from Speech_CLscenario.slurp_aug import Slurp
 from Speech_CLscenario.class_incremental import ClassIncremental
-from continuum import ClassIncremental
-from continuum.datasets import FluentSpeech
+# from continuum import ClassIncremental
+# from continuum.datasets import FluentSpeech
 import torch
 import torch.nn.functional as F
 import argparse
@@ -38,8 +38,11 @@ from torchmetrics import WordErrorRate, CharErrorRate
 from torch.optim.lr_scheduler import LambdaLR
 from tokenizers import Tokenizer
 
-# TEST THINGS
+# HUGGINGFACE IMPORTS
+from transformers import AutoProcessor, ASTModel, AutoFeatureExtractor
 
+# PROMPT CLASS & PROMPTED MODEL IMPORTS
+from PromptAST import PromptAST
 from prompt import Prompt, PromptArgs
 
 prompt_args = PromptArgs(length=5, 
@@ -540,7 +543,7 @@ def main(args):
     if args.offline_train:   # Create just 1 task with all classes.
         
         # Added Splitting Crit = None
-        scenario_train = ClassIncremental(dataset_train,nb_tasks=1)#,transformations=[partial(trunc, max_len=args.max_len)])
+        scenario_train = ClassIncremental(dataset_train,nb_tasks=1, splitting_crit=None)#,transformations=[partial(trunc, max_len=args.max_len)])
         scenario_valid = ClassIncremental(dataset_valid,nb_tasks=1, splitting_crit=None)#,transformations=[partial(trunc, max_len=args.max_len)])
         scenario_test = ClassIncremental(dataset_test,nb_tasks=1, splitting_crit=None)
     else:
@@ -751,6 +754,7 @@ def main(args):
                 # yy = beam_search(model, x[0,:].unsqueeze(0), device, args.n_vocab,max_length=130, SOS_token=28, EOS_token=29, beam_size=5, pen_alpha=0.6,)
                 # print("Decoded",yy)
                 
+    
                
                 # if idx_batch == (len(train_loader) -2) or idx_batch == (len(train_loader)//2):
                 #     print("True text (TRAIN): ", text_transf.int_to_text(text_to_loss[0,:].tolist()))

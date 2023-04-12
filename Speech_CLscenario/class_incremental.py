@@ -45,8 +45,8 @@ class ClassIncremental(_BaseScenario):
         initial_increment: int = 0,
         transformations: Union[List[Callable], List[List[Callable]]] = None,
         class_order: Union[List[int], None]=None,
-        # splitting_crit = 'scenario',
-        splitting_crit = None,
+        splitting_crit = 'scenario',
+        # splitting_crit = None,
     ) -> None:
 
         self.cl_dataset = cl_dataset
