@@ -71,9 +71,9 @@ class FluentSpeech(_ContinuumDataset):
             action, obj, location = items[-3:]
 
             x.append(os.path.join(base_path, items[1]))
-            y.append([
+            y.append(
                 self.class_ids[action+obj+location]    
-            ])
+            )
             
             #transcriptions.append(map_transcripts.text_to_int(items[3].lower()))
             transcriptions.append(items[3].lower())

@@ -5,8 +5,8 @@ from torch.optim import Adam, AdamW
 from Speech_CLscenario.fluentspeech import FluentSpeech
 from Speech_CLscenario.slurp_aug import Slurp
 from Speech_CLscenario.class_incremental import ClassIncremental
-#from continuum import ClassIncremental
-#from continuum.datasets import FluentSpeech
+from continuum import ClassIncremental
+from continuum.datasets import FluentSpeech
 import torch
 import torch.nn.functional as F
 import argparse
@@ -215,181 +215,6 @@ def sequence_length_penalty(length: int, alpha: float=0.6) -> float:
     return ((5 + length) / (5 + 1)) ** alpha
 
 
-# def beam_search(model, input_sequence, device,vocab_size, max_length=130, SOS_token=2, EOS_token=3, PAD_token=0, beam_size=5, pen_alpha=0.6,):
-#     model.eval()
-#     model = model.to(device)
-    
-#     beam_size = beam_size
-#     beam_size_count = beam_size
-#     pen_alpha = pen_alpha
-#     vocab_size = vocab_size
-    
-#     decoder_input = torch.tensor([[SOS_token]], dtype=torch.long, device=device)
-#     scores = torch.Tensor([0.]).to(device)
-    
-#     input_sequence = input_sequence.to(device)
-    
-    
-#     encoder_output = model.embed_audio(input_sequence)
-#     encoder_output_afterEOS = encoder_output
-#     final_scores = []
-#     final_tokens = []
-#     #print(encoder_output.shape)
-    
-#     for i in range(max_length):
-        
-#         tgt_mask = model.create_tgt_mask(decoder_input.shape[1]).to(device)
-#         tgt_key_padding_mask = model.create_pad_mask(decoder_input, PAD_token).to(device)
-        
-#         logits= model.decod_audio(encoder_output,decoder_input, tgt_mask = tgt_mask, tgt_key_padding_mask = tgt_key_padding_mask)
-        
-#         #print("Logits dims: ", logits.shape)
-#         log_probs = torch.log_softmax(logits[:, -1], dim=1)
-#         log_probs = log_probs / sequence_length_penalty(i+1, pen_alpha)
-        
-        
-        
-        
-        
-#         #log_probs[decoder_input[:, -1]==EOS_token, :] = 0
-        
-#         #print("Scores 1: ", scores.shape)
-#         scores = scores.unsqueeze(1) + log_probs
-#         #print("Scores 2: ", scores.shape)
-        
-#         scores, indices = torch.topk(scores.reshape(-1), beam_size_count)
-#         #print("Scores 3: ", scores.shape)
-       
-#         #print(scores)
-#         #scores_new = scores_new.unsqueeze(1) * log_probs_new
-        
-#         #scores_new, indices_new = torch.topk(scores_new.reshape(-1), beam_size)
-        
-        
-       
-#         beam_indices  = torch.divide(indices, vocab_size, rounding_mode='floor')
-#         token_indices = torch.remainder(indices, vocab_size) 
-    
-#         next_decoder_input = []
-        
-#         EOS_beams_index = []
-#         for ind, (beam_index, token_index) in enumerate(zip(beam_indices, token_indices)):
-            
-            
-#             prev_decoder_input = decoder_input[beam_index]
-#             #if prev_decoder_input[-1]==EOS_token:
-#             #    token_index = EOS_token
-           
-#             if token_index == EOS_token:
-#                 token_index = torch.LongTensor([token_index]).to(device)
-#                 final_tokens.append(torch.cat([prev_decoder_input, token_index]))
-#                 #print(torch.cat([prev_decoder_input, token_index]))
-#                 final_scores.append(scores[ind])
-#                 beam_size_count -= 1
-#                 encoder_output = encoder_output_afterEOS.expand(beam_size_count, *encoder_output_afterEOS.shape[1:])
-#                 #scores_list = scores.tolist()
-#                 #del scores_list[ind]
-#                 #scores = torch.tensor(scores_list, device=device)
-#                 EOS_beams_index.append(ind)
-#                 #print(f"Beam #{ind} reached EOS!")
-                
-#             else:
-#                 token_index = torch.LongTensor([token_index]).to(device)
-#                 next_decoder_input.append(torch.cat([prev_decoder_input, token_index]))
-#         #print(decoder_input)
-#         if len(EOS_beams_index) >0:
-#             scores_list = scores.tolist()
-#             for tt in EOS_beams_index[::-1]:
-#                 del scores_list[tt]
-#             scores = torch.tensor(scores_list, device=device)
-            
-#         if len(final_scores) == beam_size:
-#             break
-        
-#         decoder_input = torch.vstack(next_decoder_input)
-        
-#         #print(decoder_input)
-        
-        
-        
-#         #if (decoder_input[:, -1]==EOS_token).sum() == beam_size:
-#         #    break
-        
-#         if i==0:
-#             encoder_output = encoder_output.expand(beam_size, *encoder_output.shape[1:])
-    
-    
-    
-#     #decoder_output, _ = max(zip(decoder_input, scores), key=lambda x: x[1])
-#     #decoder_output = decoder_output[1:]
-#     #torch.set_printoptions(precision=10)
-#     #print(scores)
-    
-    
-#     #print(final_tokens)
-#     #print(final_scores)
-#     max_val = max(final_scores)
-#     return final_tokens[final_scores.index(max_val)].tolist()
-#     #return decoder_input.tolist()  # If I want to return all beams
-#     #return decoder_output.tolist()
-    
-    
-# def beam_search(model, input_sequence, device,vocab_size, max_length=130, SOS_token=2, EOS_token=3, PAD_token=0, beam_size=5, pen_alpha=0.6,):
-#     model.eval()
-#     model = model.to(device)
-    
-#     beam_size = beam_size
-#     pen_alpha = pen_alpha
-#     vocab_size = vocab_size
-    
-#     decoder_input = torch.tensor([[SOS_token]], dtype=torch.long, device=device)
-#     scores = torch.Tensor([0.]).to(device)
-#     input_sequence = input_sequence.to(device)
-    
-    
-#     encoder_output = model.embed_audio(input_sequence)
-    
-#     for i in range(max_length):
-        
-#         tgt_mask = model.create_tgt_mask(decoder_input.shape[1]).to(device)
-#         tgt_key_padding_mask = model.create_pad_mask(decoder_input, PAD_token).to(device)
-        
-#         logits= model.decod_audio(encoder_output,decoder_input, tgt_mask = tgt_mask, tgt_key_padding_mask = tgt_key_padding_mask)
-        
-#         log_probs = torch.log_softmax(logits[:, -1], dim=1)
-#         log_probs = log_probs / sequence_length_penalty(i+1, pen_alpha)
-        
-#         log_probs[decoder_input[:, -1]==EOS_token, :] = 0
-        
-#         scores = scores.unsqueeze(1) + log_probs
-        
-#         scores, indices = torch.topk(scores.reshape(-1), beam_size)
-#         beam_indices  = torch.divide   (indices, vocab_size, rounding_mode='floor')
-#         token_indices = torch.remainder(indices, vocab_size) 
-        
-#         next_decoder_input = []
-        
-#         for beam_index, token_index in zip(beam_indices, token_indices):
-#             prev_decoder_input = decoder_input[beam_index]
-#             if prev_decoder_input[-1]==EOS_token:
-#                 token_index = EOS_token
-#             token_index = torch.LongTensor([token_index]).to(device)
-#             next_decoder_input.append(torch.cat([prev_decoder_input, token_index]))
-        
-#         decoder_input = torch.vstack(next_decoder_input)
-        
-#         if (decoder_input[:, -1]==EOS_token).sum() == beam_size:
-#             break
-        
-#         if i==0:
-#             encoder_output = encoder_output.expand(beam_size, *encoder_output.shape[1:])
-    
-#     decoder_output, _ = max(zip(decoder_input, scores), key=lambda x: x[1])
-#     decoder_output = decoder_output[1:]
-    
-    
-#     return decoder_output.tolist()
-
 def beam_search(model, input_sequence, device,vocab_size, max_length=130, SOS_token=2, EOS_token=3, PAD_token=0, beam_size=5, pen_alpha=0.6, return_best_beam = True):
     model.eval()
     model = model.to(device)
@@ -493,15 +318,7 @@ def beam_search(model, input_sequence, device,vocab_size, max_length=130, SOS_to
        
             
             
-    
-    #decoder_output, _ = max(zip(decoder_input, scores), key=lambda x: x[1])
-    #decoder_output = decoder_output[1:]
-    #torch.set_printoptions(precision=10)
-    #print(scores)
-    
-    #return decoder_input.tolist()  # If I want to return all beams
-    #return decoder_output.tolist()
-    
+
     # If we want to return most probable predicted beam.
     if return_best_beam:
         
@@ -581,7 +398,7 @@ def get_args_parser():
     
     # Dataset parameters.
     
-    parser.add_argument('--data_path', type=str, default='/data/cappellazzo/CL_SLU',help='path to dataset')  #'/data/cappellazzo/slurp'  /data/cappellazzo/CL_SLU
+    parser.add_argument('--data_path', type=str, default='/home/ste/Datasets',help='path to dataset')  #'/data/cappellazzo/slurp'  /data/cappellazzo/CL_SLU
     parser.add_argument('--path_to_save_model',type=str,default='/models_SLURP_wav_SpeechBrain_intentsaug/')
     parser.add_argument('--max_len_audio', type=int, default=112000, 
                         help='max length for the audio signal --> it will be cut')
@@ -711,15 +528,19 @@ def main(args):
     
    
     
-    dataset_train = Slurp(args.data_path, max_len_audio = args.max_len_audio, max_len_text=args.max_len_text, train="train", download=False)
-    dataset_valid = Slurp(args.data_path, max_len_audio = args.max_len_audio,max_len_text=args.max_len_text, train="valid", download=False)
-    dataset_test = Slurp(args.data_path, max_len_audio = args.max_len_audio,max_len_text=args.max_len_text, train=False, download=False)
-    
+    # dataset_train = Slurp(args.data_path, max_len_audio = args.max_len_audio, max_len_text=args.max_len_text, train="train", download=False)
+    # dataset_valid = Slurp(args.data_path, max_len_audio = args.max_len_audio,max_len_text=args.max_len_text, train="valid", download=False)
+    # dataset_test = Slurp(args.data_path, max_len_audio = args.max_len_audio,max_len_text=args.max_len_text, train=False, download=False)
+
+    # FLUENT SPEECH REDEFINITION
+    dataset_train = FluentSpeech(args.data_path, train="train", download=False)
+    dataset_valid = FluentSpeech(args.data_path, train="valid", download=False)
+    dataset_test = FluentSpeech(args.data_path, train="test", download=False)
     
     if args.offline_train:   # Create just 1 task with all classes.
         
         # Added Splitting Crit = None
-        scenario_train = ClassIncremental(dataset_train,nb_tasks=1, splitting_crit=None)#,transformations=[partial(trunc, max_len=args.max_len)])
+        scenario_train = ClassIncremental(dataset_train,nb_tasks=1)#,transformations=[partial(trunc, max_len=args.max_len)])
         scenario_valid = ClassIncremental(dataset_valid,nb_tasks=1, splitting_crit=None)#,transformations=[partial(trunc, max_len=args.max_len)])
         scenario_test = ClassIncremental(dataset_test,nb_tasks=1, splitting_crit=None)
     else:
@@ -787,8 +608,28 @@ def main(args):
             assert (args.n_hidden_audio % args.n_head_audio) == 0, ('Hidden dimension of encoder must be divisible by number of audio heads!')
             assert (args.n_hidden_text % args.n_head_text) == 0, ('Hidden dimension of decoder must be divisible by number of text heads!')
             
-            #model = CL_model(initial_classes,args.nb_classes_noCL, dims, device=device).to(device)
-            model = Seq2SeqTransformer(dims,prompt_args=prompt_args, device=device).to(device)
+
+            # FIXED PROMPT ARGS: SHOUD BE ADDED TO ARGPARSE
+            prompt_args = PromptArgs(length=5, 
+                         embed_dim=768, 
+                         embedding_key='mean', 
+                         prompt_init='zero',
+                         prompt_pool=True,
+                         prompt_key=True,
+                         pool_size=10,
+                         top_k=3,
+                         batchwise_prompt=False,
+                         prompt_key_init='uniform')
+
+            # MODEL REDEFINITION FROM PRETRAINED
+            model = ASTModel.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593")
+            ast = PromptAST(emb_layer = model._modules['embeddings'],
+                        body_layer = model._modules['encoder'],
+                        layer_norm = model._modules['layernorm'],
+                        prompt_args = prompt_args)
+
+
+
             #model = nn.DataParallel(model)
             n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
             print('Number of params of the model:', n_parameters)

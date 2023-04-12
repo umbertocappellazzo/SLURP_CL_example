@@ -3,4 +3,6 @@ dataset
 wandb
 tools
 pycache
-__pycache__
+__pycache__/
+*.pyc
+fluent_speech_commands_dataset
