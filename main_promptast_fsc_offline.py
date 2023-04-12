@@ -57,82 +57,6 @@ prompt_args = PromptArgs(length=5,
                          prompt_key_init='uniform')
 
 
-def trunc(x,max_len):
-    
-    #l = len(x)
-    #if l > max_len:
-        #x = x[l//2-max_len//2:l//2+max_len//2]
-    #    x = x[:max_len]
-    #if l < max_len:
-    #    x = F.pad(x, (0, max_len-l), value=0.)
-        
-   
-    eps = np.finfo(np.float64).eps
-    sample_rate = 16000
-    n_mels = 80
-    win_len = 20
-    hop_len= 10
-    win_len = int(sample_rate/1000*win_len)
-    hop_len = int(sample_rate/1000*hop_len)
-    mel_spectr = tr.MelSpectrogram(sample_rate=16000,
-            win_length=win_len, hop_length=hop_len, n_mels=n_mels)
-    
-                # If I set 8 seconds as cutoff value, the output has 801 as temp size.                             
-    
-    
-    
-    #return np.log(mel_spectr(x)[:,:max_len//hop_len]+eps)
-    #return np.log(mel_spectr(x)+eps)
-    return mel_spectr(x+eps).log10()
-
-
-
-
-
-class TextTransform:
-    """Maps characters to integers and vice versa
-   
-    28 --> SOS (#)
-    29 --> EOS (*)
-    30 --> PAD (@)
-    """
-    
-    def __init__(self):
-        self.punctuations = list(string.punctuation)
-        del self.punctuations[6]
-        self.punctuations.append('’')
-        
-        self.char_map_str = ["\'",">","a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","#","*","@"]
-        
-        self.char_map = {}
-        self.index_map = {}
-        for index,ch in enumerate(self.char_map_str):
-        
-            self.char_map[ch] = int(index)
-            self.index_map[int(index)] = ch
-
-    def text_to_int(self, text):
-        """ Use a character map and convert text to an integer sequence """
-        int_sequence = []
-        text = [char for char in text if char not in self.punctuations]
-        
-        for c in text:
-            if c == ' ':
-                ch = self.char_map['>']
-            else:
-                ch = self.char_map[c]
-            int_sequence.append(ch)
-        return int_sequence
-
-    def int_to_text(self, labels):
-        """ Use a character map and convert integer labels to an text sequence """
-        string_ = []
-        for i in labels:
-            string_.append(self.index_map[i])
-        return ''.join(string_).replace('>', ' ')
-    
-
-
 
 def data_processing(data,max_len_audio, tokenizer, SOS_token=2, EOS_token=3, PAD_token=0):
     #text_transform = TextTransform()
@@ -187,31 +111,6 @@ def data_processing(data,max_len_audio, tokenizer, SOS_token=2, EOS_token=3, PAD
     return x,transcripts_labels#,torch.tensor(label_lengths)
 
 
-
-# Greedy decoder implementation. Decode a trascription by picking the most probable token for each text sequence frame.
-
-def greedy_decode(model, input_sequence, device, max_length=130, SOS_token=2, EOS_token=3, PAD_token=0):
-    model.eval()
-    y_input = torch.tensor([[SOS_token]], dtype=torch.long, device=device)
-    input_sequence = input_sequence.to(device)
-    model = model.to(device)
-    enc_out = model.embed_audio(input_sequence)
-    
-    for _ in range(max_length):
-        tgt_mask = model.create_tgt_mask(y_input.shape[1]) .to(device)
-        tgt_key_padding_mask = model.create_pad_mask(y_input, PAD_token).to(device)
-        
-        
-        pred_output = model.decod_audio(enc_out, y_input, tgt_mask = tgt_mask, tgt_key_padding_mask = tgt_key_padding_mask)
-        
-        next_token = torch.argmax(pred_output[:, -1], keepdim=True)
-        y_input = torch.cat((y_input, next_token), dim=1)
-        
-        if next_token.item() == EOS_token:
-            break
-     
-    
-    return y_input.tolist()[0]
         
     
 def sequence_length_penalty(length: int, alpha: float=0.6) -> float:
