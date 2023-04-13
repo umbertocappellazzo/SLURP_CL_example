@@ -108,14 +108,10 @@ def data_processing(data,max_len_audio, tokenizer, SOS_token=2, EOS_token=3, PAD
     #t = torch.stack(t)
     
     #return x,y,t,transcripts_labels#,torch.tensor(label_lengths)
-    return x,transcripts_labels#,torch.tensor(label_lengths)
+    # return x,transcripts_labels#,torch.tensor(label_lengths)
 
 
-        
-    
-def sequence_length_penalty(length: int, alpha: float=0.6) -> float:
-    return ((5 + length) / (5 + 1)) ** alpha
-
+    return x
 
 def beam_search(model, input_sequence, device,vocab_size, max_length=130, SOS_token=2, EOS_token=3, PAD_token=0, beam_size=5, pen_alpha=0.6, return_best_beam = True):
     model.eval()
@@ -487,24 +483,9 @@ def main(args):
         print(f"Starting task id {task_id}/{len(scenario_train) - 1}")
         
         if task_id == 0:
-            #text_transf = TextTransform()
-            #vocab_size = len(text_transf.char_map_str)
+
             print('Creating the CL model:')
-            #For CTC
-            
-            # model = CL_model(initial_classes,vocab_size,in_chan=args.in_chan, n_blocks=args.n_blocks, n_repeats=args.n_repeats,
-            #                  out_chan=args.out_chan, hid_chan=args.hid_chan,kernel_size=args.kernel_size,
-            #                  device=device).to(device)   
-            
-            # W/out CTC
-            # model = CL_model(initial_classes,args.nb_classes_noCL,in_chan=args.in_chan, n_blocks=args.n_blocks, n_repeats=args.n_repeats,
-            #                   out_chan=args.out_chan, hid_chan=args.hid_chan,kernel_size=args.kernel_size,
-            #                   device=device).to(device)  
-            
-            # Default:
-            #dims = ModelDimensions(args.n_mels, args.kernel_size, args.n_hidden_audio, args.n_head_audio, args.n_layer_audio, args.n_vocab, args.n_hidden_text, args.n_head_text, args.n_layer_text, args.drop, args.n_feedforward)
-            
-            # Test Dims
+
             dims = ModelDimensions(args.n_mels, args.kernel_size, args.n_hidden_audio, args.n_head_audio, args.n_layer_audio, args.n_vocab, args.n_hidden_text, n_head_text=1, n_layer_text=1, drop=args.drop, n_feedforward=768*2)
             
             assert (args.n_hidden_audio % args.n_head_audio) == 0, ('Hidden dimension of encoder must be divisible by number of audio heads!')
@@ -537,47 +518,34 @@ def main(args):
             print('Number of params of the model:', n_parameters)
             
             
-        # else:
-            
-        #     print(f'Updating the CL model, {args.increment} new classes for the classifier.')
-        #     #model.classif_intent.add_new_outputs(args.increment)  
-        #     model.classif.add_new_outputs(args.increment)  
             
             
         
-        
+        # TOKENIZER DEFINITION
         path_2_tok = os.getcwd() + '/tokenizer_SLURP_BPE_1000_noblank_intents_SFaug.json'
         tokenizer = Tokenizer.from_file(path_2_tok)
         
-        
+        # OPTIMIZER DEFINITION
         optimizer = AdamW(model.parameters(),lr=args.lr,betas=(0.9,0.98),eps=1e-6,weight_decay=args.weight_decay)
         #optimizer = Adam(model.parameters(), lr=args.lr, betas=(0.9,0.98), eps=1e-8, weight_decay=args.weight_decay)
         
+
         test_taskset = scenario_test[:task_id+1]    # Evaluation on all seen tasks.
         valid_taskset = scenario_valid[:task_id+1]
         
         
         
-        
-        train_loader = DataLoader(exp_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,  #num_workers=args.num_workers
-                                  collate_fn=lambda x: data_processing(x,args.max_len_audio,tokenizer),pin_memory=True,drop_last=False,) #collate_fn=lambda x: data_processing(x,args.max_len_audio)
+        # LOADERS DEFINITION
+        train_loader = DataLoader(exp_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,  
+                                  collate_fn=lambda x: data_processing(x,args.max_len_audio,tokenizer),pin_memory=True,drop_last=False,)
         valid_loader = DataLoader(valid_taskset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,
                                   collate_fn = lambda x: data_processing(x,args.max_len_audio,tokenizer),pin_memory=True, drop_last=False,)
         test_loader = DataLoader(test_taskset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers,
                                  collate_fn=lambda x: data_processing(x,args.max_len_audio,tokenizer),pin_memory=True, drop_last=False,)
         
         
-        # count = 0
-        # for (x,_) in train_loader:
-        #     count += x.shape[0]
-        # print("Count: ",count)
-            
-        
-        #num_steps = len(train_loader)*epochs
-        
         warmup_period = len(train_loader)*args.warmup_ratio
         
-        #warmup_period = int(num_steps*(args.warmup_ratio/100))
         
         print("Warm up: ", warmup_period)
         #lr_scheduler = LambdaLR(
