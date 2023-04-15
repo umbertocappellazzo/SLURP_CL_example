@@ -37,12 +37,13 @@ import string
 from torchmetrics import WordErrorRate, CharErrorRate
 from torch.optim.lr_scheduler import LambdaLR
 from tokenizers import Tokenizer
+from tqdm import tqdm
 
 # HUGGINGFACE IMPORTS
 from transformers import AutoProcessor, ASTModel, AutoFeatureExtractor
 
 # PROMPT CLASS & PROMPTED MODEL IMPORTS
-from PromptAST import PromptAST
+from PromptASTClassifier import PromptASTClassifier
 from prompt import Prompt, PromptArgs
 
 prompt_args = PromptArgs(length=5, 
@@ -57,208 +58,23 @@ prompt_args = PromptArgs(length=5,
                          prompt_key_init='uniform')
 
 
+# DATA PROCESSING FOR FSC
+def data_processing(data, processor):
 
-def data_processing(data,max_len_audio, tokenizer, SOS_token=2, EOS_token=3, PAD_token=0):
-    #text_transform = TextTransform()
-    
-    SOS = torch.tensor([SOS_token])
-    EOS = torch.tensor([EOS_token])
-    
-    # label_lengths are used if CTC loss is exploited in the experiments.
-    
-    label_lengths = []
-    transcripts_labels = [] 
+    y = [] 
     x = []
-    #y = []
-    #t= []
-    
-    #_,y,t, _ = zip(*data)
-    #print(x[0].shape)
-    
-    
-    #y = torch.tensor(np.array(y))
-    #t = torch.tensor(t)
     
     for i in range(len(data)):
+        
+        #get audio signal
         audio_sig = data[i][0]
-        
-        if len(audio_sig) > max_len_audio:
-            pass
-        else:
-            #spect = torch.tensor(trunc(audio_sig,max_len_audio))
-            #x.append(spect.squeeze(0).transpose(0,1))
-            x.append(audio_sig)
-            
-            
-            transcript = data[i][3]
-            #label = torch.tensor(text_transform.text_to_int(transcript))
-            label = torch.tensor(tokenizer.encode(transcript).ids)
-            
-            #label = F.pad(label, (0, max_len_text-len(label)), value=PAD_token)
-            label = torch.cat((SOS,label,EOS))
-            
-            #label_lengths.append(len(label))
-            transcripts_labels.append(label)
-            #y.append(torch.tensor(data[i][1]))
-            #t.append(torch.tensor(data[i][2]))
-    
-    transcripts_labels = torch.nn.utils.rnn.pad_sequence(transcripts_labels, batch_first=True, padding_value=PAD_token)     #transcripts_labels = torch.stack(transcripts_labels)        #transcripts_labels = torch.nn.utils.rnn.pad_sequence(transcripts_labels, batch_first=True,padding_value=PAD_token)
-    x = torch.nn.utils.rnn.pad_sequence(x, batch_first=True, padding_value = 0)      #x = torch.stack(x)      #x = torch.nn.utils.rnn.pad_sequence(x, batch_first=True)
-    #y = torch.stack(y)
-    #t = torch.stack(t)
-    
-    #return x,y,t,transcripts_labels#,torch.tensor(label_lengths)
-    # return x,transcripts_labels#,torch.tensor(label_lengths)
+        spec = processor(audio_sig, sampling_rate=16000, return_tensors='pt')
+        x.append(spec['input_values'])
+        # intent
+        intent = data[i][1]
+        y.append(torch.tensor(intent))
 
-
-    return x
-
-def beam_search(model, input_sequence, device,vocab_size, max_length=130, SOS_token=2, EOS_token=3, PAD_token=0, beam_size=5, pen_alpha=0.6, return_best_beam = True):
-    model.eval()
-    model = model.to(device)
-    
-    beam_size = beam_size
-    beam_size_count = beam_size
-    pen_alpha = pen_alpha
-    vocab_size = vocab_size
-    
-    decoder_input = torch.tensor([[SOS_token]], dtype=torch.long, device=device)
-    scores = torch.Tensor([0.]).to(device)
-    
-    input_sequence = input_sequence.to(device)
-    
-    
-    encoder_output = model.embed_audio(input_sequence)
-    encoder_output_afterEOS = encoder_output
-    final_scores = []
-    final_tokens = []
-    
-    
-    for i in range(max_length):
-        
-        
-        tgt_mask = model.create_tgt_mask(decoder_input.shape[1]).to(device)
-        tgt_key_padding_mask = model.create_pad_mask(decoder_input, PAD_token).to(device)
-        
-        logits= model.decod_audio(encoder_output,decoder_input, tgt_mask = tgt_mask, tgt_key_padding_mask = tgt_key_padding_mask)
-        
-        
-        log_probs = torch.log_softmax(logits[:, -1], dim=1)
-        log_probs = log_probs / sequence_length_penalty(i+1, pen_alpha)
-        
-    
-        scores = scores.unsqueeze(1) + log_probs
-        
-        
-        scores, indices = torch.topk(scores.reshape(-1), beam_size_count)
-        
-        
-       
-        beam_indices  = torch.divide(indices, vocab_size, rounding_mode='floor')
-        token_indices = torch.remainder(indices, vocab_size) 
-    
-        next_decoder_input = []
-        
-        EOS_beams_index = []
-        for ind, (beam_index, token_index) in enumerate(zip(beam_indices, token_indices)):
-            
-            
-            prev_decoder_input = decoder_input[beam_index]
-            #if prev_decoder_input[-1]==EOS_token:
-            #    token_index = EOS_token
-           
-            if token_index == EOS_token:
-                token_index = torch.LongTensor([token_index]).to(device)
-                final_tokens.append(torch.cat([prev_decoder_input, token_index]))
-                #print(torch.cat([prev_decoder_input, token_index]))
-                final_scores.append(scores[ind])
-                beam_size_count -= 1
-                encoder_output = encoder_output_afterEOS.expand(beam_size_count, *encoder_output_afterEOS.shape[1:])
-                #scores_list = scores.tolist()
-                #del scores_list[ind]
-                #scores = torch.tensor(scores_list, device=device)
-                EOS_beams_index.append(ind)
-                #print(f"Beam #{ind} reached EOS!")
-                
-            else:
-                token_index = torch.LongTensor([token_index]).to(device)
-                next_decoder_input.append(torch.cat([prev_decoder_input, token_index]))
-        #print(decoder_input)
-        if len(EOS_beams_index) >0:
-            scores_list = scores.tolist()
-            for tt in EOS_beams_index[::-1]:
-                del scores_list[tt]
-            scores = torch.tensor(scores_list, device=device)
-            
-        if len(final_scores) == beam_size:
-            break
-        
-        decoder_input = torch.vstack(next_decoder_input)
-        
-        #print(decoder_input)
-        
-        
-        
-        #if (decoder_input[:, -1]==EOS_token).sum() == beam_size:
-        #    break
-        
-        if i==0:
-            encoder_output = encoder_output.expand(beam_size_count, *encoder_output.shape[1:])
-    
-    
-    if i == (max_length -1): # We have reached max # of allowed iterations.
-    
-        for beam_unf, score_unf in zip(decoder_input,scores):
-            final_tokens.append(beam_unf)
-            final_scores.append(score_unf)
-        
-        assert len(final_tokens) == beam_size and len(final_scores) == beam_size, ('Final_tokens and final_scores lists do not match beam_size size!')
-       
-            
-            
-
-    # If we want to return most probable predicted beam.
-    if return_best_beam:
-        
-        max_val = max(final_scores)
-        return final_tokens[final_scores.index(max_val)].tolist()
-    else:
-        return final_tokens, final_scores
-    
-def rescoring(final_tokens, final_scores, model, audio_seq, loss_ctc, device, ctc_weight = 0.1):
-    
-    """
-    This function takes in input a bunch of attentio-based hypothesis with the corresponding scores 
-    (obtained with beam search). Then, each hypo is rescored based on the CTC probability using an interpolation 
-    coeff. (ctc_weight). The best hypo will be returned.
-    
-    """
-    
-    model.eval()
-    model = model.to(device)
-    audio_seq = audio_seq.to(device)
-    
-    rescored_scores = []
-    loss_ctc = loss_ctc 
-    
-    encoder_output_ctc = model.embed_audio_ctc(audio_seq)
-    input_len = torch.full(size=(1,),fill_value=encoder_output_ctc.shape[1], dtype=torch.long)
-    
-    
-    for tokens, score in zip(final_tokens, final_scores): 
-        token_len = torch.tensor(len(tokens))
-        score_ctc = loss_ctc(encoder_output_ctc.permute(1,0,2), tokens, input_len, token_len)
-        score_ctc = torch.exp(-score_ctc)
-        score = torch.exp(score)
-        #print("CTC score: ", score_ctc)
-        #print("Att score: ", score)
-        
-        final_score = score_ctc*ctc_weight + score*(1-ctc_weight)
-        rescored_scores.append(final_score.detach().item())
-    
-    
-    max_score = max(rescored_scores)
-    return final_tokens[rescored_scores.index(max_score)].tolist()
+    return torch.cat(x), torch.tensor(y)
         
   
 
@@ -450,7 +266,7 @@ def main(args):
     
     # Losses employed: CE + MSE.
     
-    criterion_text = torch.nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#,ignore_index=30)
+    criterion = torch.nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#,ignore_index=30)
     #criterion_intent = torch.nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)
     #criterion_mse = torch.nn.MSELoss()
     #criterion_ctc = torch.nn.CTCLoss(blank=0, reduction='mean', zero_infinity =True)
@@ -506,11 +322,12 @@ def main(args):
 
             # MODEL REDEFINITION FROM PRETRAINED
             model = ASTModel.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593")
-            ast = PromptAST(emb_layer = model._modules['embeddings'],
+            model = PromptASTClassifier(emb_layer = model._modules['embeddings'],
                         body_layer = model._modules['encoder'],
-                        layer_norm = model._modules['layernorm'],
-                        prompt_args = prompt_args)
-
+                        embedding_size=model.config.hidden_size,
+                        num_classes=len(dataset_train.class_ids),
+                        prompt_args = prompt_args).to(device)
+            print(model)
 
 
             #model = nn.DataParallel(model)
@@ -519,12 +336,10 @@ def main(args):
             
             
             
-            
-        
-        # TOKENIZER DEFINITION
-        path_2_tok = os.getcwd() + '/tokenizer_SLURP_BPE_1000_noblank_intents_SFaug.json'
-        tokenizer = Tokenizer.from_file(path_2_tok)
-        
+        # AUDIO PROCESSOR DEFINITION (Creates spectrograms)
+        processor = AutoFeatureExtractor.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593")
+
+
         # OPTIMIZER DEFINITION
         optimizer = AdamW(model.parameters(),lr=args.lr,betas=(0.9,0.98),eps=1e-6,weight_decay=args.weight_decay)
         #optimizer = Adam(model.parameters(), lr=args.lr, betas=(0.9,0.98), eps=1e-8, weight_decay=args.weight_decay)
@@ -536,12 +351,28 @@ def main(args):
         
         
         # LOADERS DEFINITION
-        train_loader = DataLoader(exp_train, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,  
-                                  collate_fn=lambda x: data_processing(x,args.max_len_audio,tokenizer),pin_memory=True,drop_last=False,)
-        valid_loader = DataLoader(valid_taskset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,
-                                  collate_fn = lambda x: data_processing(x,args.max_len_audio,tokenizer),pin_memory=True, drop_last=False,)
-        test_loader = DataLoader(test_taskset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers,
-                                 collate_fn=lambda x: data_processing(x,args.max_len_audio,tokenizer),pin_memory=True, drop_last=False,)
+        train_loader = DataLoader(exp_train, 
+                                  batch_size=args.batch_size, 
+                                  shuffle=True, 
+                                  num_workers=args.num_workers,  
+                                  collate_fn=lambda x: data_processing(x, processor = processor),
+                                  pin_memory=True,
+                                  drop_last=False,)
+        
+        valid_loader = DataLoader(valid_taskset, 
+                                  batch_size=args.batch_size, 
+                                  shuffle=True, 
+                                  num_workers=args.num_workers,
+                                  collate_fn=lambda x: data_processing(x, processor = processor),
+                                  pin_memory=True, 
+                                  drop_last=False,)
+        test_loader = DataLoader(test_taskset, 
+                                 batch_size=args.batch_size, 
+                                 shuffle=False, 
+                                 num_workers=args.num_workers,
+                                 collate_fn=lambda x: data_processing(x, processor = processor),
+                                 pin_memory=True, 
+                                 drop_last=False,)
         
         
         warmup_period = len(train_loader)*args.warmup_ratio
@@ -580,95 +411,29 @@ def main(args):
             
             
             print(f"Epoch #: {epoch}")
-           
-            #for x, y, t, token, token_len in train_loader:
-            #for idx_batch, (x, y, t, text) in enumerate(train_loader):
-            for idx_batch, (x, text) in enumerate(train_loader):   
+            running_loss = 0
+            for idx_batch, (x, y) in tqdm(enumerate(train_loader)):   
                 
-                #optimizer.zero_grad()
-                optim.optimizer.zero_grad()
-                #x = torch.squeeze(x,1).transpose(1,2)
-                #x = x.transpose(1,2)
-               
-                
-                text = text.squeeze(1)
 
-                #y = y.squeeze(1)
- 
-                # Find samples from the current batch that correspond to the past classes (i.e., buffer memory samples).
-                
-                loss = 0.
-                
-  
+                optim.optimizer.zero_grad()
+
+                print(x.shape)
                 x = x.to(device)
-                #y = y.to(device)
-                text = text.to(device)
-                
-                
-                #predictions_scenario, predictions_action = model.embed_audio_intent(x)
-                
-                text_to_model = text[:,:-1]
-                text_to_loss = text[:,1:]
-                
-                tgt_mask = model.create_tgt_mask(text_to_model.shape[1]).to(device)
-                tgt_key_padding_mask = model.create_pad_mask(text_to_model, args.PAD_token).to(device)
-                
-                
-                
-                pred_text, enc_out = model(x,text_to_model, tgt_mask = tgt_mask, tgt_key_padding_mask = tgt_key_padding_mask)
-                
-                
-                # yy = beam_search(model, x[0,:].unsqueeze(0), device, args.n_vocab,max_length=130, SOS_token=28, EOS_token=29, beam_size=5, pen_alpha=0.6,)
-                # print("Decoded",yy)
-                
-    
-               
-                # if idx_batch == (len(train_loader) -2) or idx_batch == (len(train_loader)//2):
-                #     print("True text (TRAIN): ", text_transf.int_to_text(text_to_loss[0,:].tolist()))
-                #     print("Predicted text (TRAIN): ", text_transf.int_to_text(torch.argmax(pred_text,dim=2)[0,:].tolist()))
-                #     print("True text (TRAIN): ", text_transf.int_to_text(text_to_loss[4,:].tolist()))
-                #     print("Predicted text (TRAIN): ", text_transf.int_to_text(torch.argmax(pred_text,dim=2)[4,:].tolist()))
-                #     print("True text (TRAIN): ", text_transf.int_to_text(text_to_loss[8,:].tolist()))
-                #     print("Predicted text (TRAIN): ", text_transf.int_to_text(torch.argmax(pred_text,dim=2)[8,:].tolist()))
-                
-                if idx_batch == (len(train_loader) -2) or idx_batch == (len(train_loader)//2):
-                    print("True text (TRAIN): ", tokenizer.decode(text_to_loss[0,:].tolist()))
-                    print("Predicted text (TRAIN): ", tokenizer.decode(torch.argmax(pred_text,dim=2)[0,:].tolist()))
-                    print("True text (TRAIN): ", tokenizer.decode(text_to_loss[1,:].tolist()))
-                    print("Predicted text (TRAIN): ", tokenizer.decode(torch.argmax(pred_text,dim=2)[1,:].tolist()))
-                    print("True text (TRAIN): ", tokenizer.decode(text_to_loss[2,:].tolist()))
-                    print("Predicted text (TRAIN): ", tokenizer.decode(torch.argmax(pred_text,dim=2)[2,:].tolist()))
-                    
-                    
-                    #for x in range(args.batch_size):
-                    #    gold_pred = text_transf.int_to_text(text_to_loss[x,:].tolist())
-                    #    list_gold.append(gold_pred.replace('@',''))
-                    #    list_preds.append(text_transf.int_to_text(torch.argmax(pred_text,dim=2)[x,:].tolist()))
-                        #list_gold.append(text_transf.int_to_text(text_to_loss[x,:].tolist()))
-                    #print(f"WER at batch {idx_batch} of epoch {epoch}: {WER(list_preds,list_gold)} ")
-                    #wer_train = WER(list_preds,list_gold)
-    
-                    
-                text_loss = criterion_text(pred_text.permute(0,2,1),text_to_loss)
+                y = y.to(device)
+                outputs = model(x)
+                loss = criterion(outputs, y)
   
-                
-                #input_lengths = torch.full(size=(enc_out.shape[0],),fill_value=enc_out.shape[1], dtype=torch.long)
-                #ctc_loss = criterion_ctc(enc_out.permute(1,0,2),text,input_lengths,token_len)
-    
-                
-                loss += text_loss#*0.7 + ctc_loss*0.3       #*0.50 + 0.50*ctc_loss
+                running_loss += loss.item()#*0.7 + ctc_loss*0.3       #*0.50 + 0.50*ctc_loss
                 
             
                 train_loss += loss.detach().item()
-                #text_loss_ += text_loss.item()
-                #ctc_loss_ += ctc_loss.detach().item()
                 
                 loss.backward()
                 optimizer.step()
-                break
-            break
-                
-                
+
+                if idx_batch % 50 == 49:
+                    print(f'[{epoch + 1}, {idx_batch + 1:5d}] loss: {running_loss / 50:.3f}') 
+                    running_loss=0.0
                 
                 
             
