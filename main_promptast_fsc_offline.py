@@ -46,6 +46,9 @@ from transformers import AutoProcessor, ASTModel, AutoFeatureExtractor
 from PromptASTClassifier import PromptASTClassifier
 from prompt import Prompt, PromptArgs
 
+
+
+
 prompt_args = PromptArgs(length=5, 
                          embed_dim=768, 
                          embedding_key='mean', 
@@ -60,12 +63,10 @@ prompt_args = PromptArgs(length=5,
 
 # DATA PROCESSING FOR FSC
 def data_processing(data, processor):
-
     y = [] 
     x = []
-    
+
     for i in range(len(data)):
-        
         #get audio signal
         audio_sig = data[i][0]
         spec = processor(audio_sig, sampling_rate=16000, return_tensors='pt')
@@ -78,7 +79,7 @@ def data_processing(data, processor):
         
   
 
-
+# OPTIMIZER
 class NoamOpt:
     "Optim wrapper that implements rate."
     def __init__(self, model_size, warmup, optimizer):
@@ -106,6 +107,7 @@ class NoamOpt:
             min(step ** (-0.5), step * self.warmup ** (-1.5)))
 
 
+# ARGS PARSER
 def get_args_parser():
     parser = argparse.ArgumentParser('CiCL for Spoken Language Understandig (Intent classification) on FSC: train and evaluation',
                                      add_help=False)
@@ -241,11 +243,6 @@ def main(args):
     #random.seed(seed)
     
    
-    
-    # dataset_train = Slurp(args.data_path, max_len_audio = args.max_len_audio, max_len_text=args.max_len_text, train="train", download=False)
-    # dataset_valid = Slurp(args.data_path, max_len_audio = args.max_len_audio,max_len_text=args.max_len_text, train="valid", download=False)
-    # dataset_test = Slurp(args.data_path, max_len_audio = args.max_len_audio,max_len_text=args.max_len_text, train=False, download=False)
-
     # FLUENT SPEECH REDEFINITION
     dataset_train = FluentSpeech(args.data_path, train="train", download=False)
     dataset_valid = FluentSpeech(args.data_path, train="valid", download=False)
@@ -254,26 +251,19 @@ def main(args):
     if args.offline_train:   # Create just 1 task with all classes.
         
         # Added Splitting Crit = None
-        scenario_train = ClassIncremental(dataset_train,nb_tasks=1, splitting_crit=None)#,transformations=[partial(trunc, max_len=args.max_len)])
-        scenario_valid = ClassIncremental(dataset_valid,nb_tasks=1, splitting_crit=None)#,transformations=[partial(trunc, max_len=args.max_len)])
+        scenario_train = ClassIncremental(dataset_train,nb_tasks=1, splitting_crit=None)
+        scenario_valid = ClassIncremental(dataset_valid,nb_tasks=1, splitting_crit=None)
         scenario_test = ClassIncremental(dataset_test,nb_tasks=1, splitting_crit=None)
     else:
         
-        scenario_train = ClassIncremental(dataset_train,increment=args.increment,initial_increment=args.initial_increment,)
-                                          #class_order=class_order)
+        scenario_train = ClassIncremental(dataset_train,increment=args.increment,initial_increment=args.initial_increment,)                               #class_order=class_order)
         scenario_test = ClassIncremental(dataset_valid,increment=args.increment,initial_increment=args.initial_increment,)
                                          #class_order=class_order)
     
-    # Losses employed: CE + MSE.
+    # Losses employed: CE
     
     criterion = torch.nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#,ignore_index=30)
-    #criterion_intent = torch.nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)
-    #criterion_mse = torch.nn.MSELoss()
-    #criterion_ctc = torch.nn.CTCLoss(blank=0, reduction='mean', zero_infinity =True)
-    
-    #text_transf = TextTransform()
-    #WER = WordErrorRate()
-    #CER = CharErrorRate()
+
     
     # Use all the classes for offline training.
     
@@ -312,7 +302,7 @@ def main(args):
             prompt_args = PromptArgs(length=5, 
                          embed_dim=768, 
                          embedding_key='mean', 
-                         prompt_init='zero',
+                         prompt_init='uniform',
                          prompt_pool=True,
                          prompt_key=True,
                          pool_size=10,
@@ -320,8 +310,14 @@ def main(args):
                          batchwise_prompt=False,
                          prompt_key_init='uniform')
 
+            # AST MODEL   
+            model_ckpt = "MIT/ast-finetuned-audioset-10-10-0.4593"
             # MODEL REDEFINITION FROM PRETRAINED
+
+            # pretrained model
             model = ASTModel.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593")
+            
+            # Prompts added
             model = PromptASTClassifier(emb_layer = model._modules['embeddings'],
                         body_layer = model._modules['encoder'],
                         embedding_size=model.config.hidden_size,
@@ -333,11 +329,13 @@ def main(args):
             #model = nn.DataParallel(model)
             n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
             print('Number of params of the model:', n_parameters)
-            
-            
+
+
+        
+        
             
         # AUDIO PROCESSOR DEFINITION (Creates spectrograms)
-        processor = AutoFeatureExtractor.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593")
+        processor = AutoFeatureExtractor.from_pretrained(model_ckpt)
 
 
         # OPTIMIZER DEFINITION
@@ -350,7 +348,7 @@ def main(args):
         
         
         
-        # LOADERS DEFINITION
+        # DATALOADERS DEFINITION
         train_loader = DataLoader(exp_train, 
                                   batch_size=args.batch_size, 
                                   shuffle=True, 
@@ -402,16 +400,17 @@ def main(args):
         
         for epoch in range(epochs):
             
-            
             model.train()
             train_loss = 0.
-            text_loss_ = 0.
-            ctc_loss_ = 0.
             
             
             
             print(f"Epoch #: {epoch}")
             running_loss = 0
+
+            ###############
+            # TRAIN PHASE #
+            ###############
             for idx_batch, (x, y) in tqdm(enumerate(train_loader)):   
                 
 
@@ -434,20 +433,20 @@ def main(args):
                 if idx_batch % 50 == 49:
                     print(f'[{epoch + 1}, {idx_batch + 1:5d}] loss: {running_loss / 50:.3f}') 
                     running_loss=0.0
+            break
                 
-                
-            
-            # Test phase
+            ####################
+            # EVALUATION PHASE #
+            ####################
             if args.eval_every and (epoch+1) % args.eval_every == 0:
+                
                 model.eval()
                 valid_loss = 0.
-                #test_text_loss_ = 0.
+
                 train_loss /= len(train_loader)
-                #text_loss_ /= len(train_loader)
-                #ctc_loss_ /= len(train_loader)
+
                 print(f"Trainloss at epoch {epoch}: {train_loss}")
-                #list_preds_val = []
-                #list_gold_val = []
+
                 
                 list_preds_val = []
                 list_gold_val = []
@@ -455,101 +454,39 @@ def main(args):
                 total = 0  
                 
                 with torch.inference_mode():
-                    #for x_valid, y_valid, t_valid, trans_valid, boh in test_loader:
-                    #for idx_valid_batch, (x_valid, y_valid, t_valid, text_valid) in enumerate(valid_loader):
-                    for idx_valid_batch, (x_valid, text_valid) in enumerate(valid_loader):
+                    
+                    ##############
+                    # VALIDATION #
+                    ##############
+                    for idx_valid_batch, (x_valid, y_valid) in enumerate(valid_loader):
                         
                         x_valid = x_valid.to(device)
-                        #y_valid = y_valid.to(device)
-                        text_valid = text_valid.to(device)
-                        text_valid = text_valid.squeeze(1)
+                        y_valid = y_valid.to(device)
                         
-                        #x_valid = x_valid.transpose(1,2)
-                        #predic_valid_sce, predic_valid_act = model.embed_audio_intent(x_valid.cuda())
-                        #predic_valid_sce = model(x_valid.cuda())
-                        
-                        text_to_model_val = text_valid[:,:-1]
-                        text_to_loss_val = text_valid[:,1:]
-                        
-                        tgt_mask = model.create_tgt_mask(text_to_model_val.shape[1]).to(device)
-                        tgt_key_padding_mask = model.create_pad_mask(text_to_model_val, args.PAD_token).to(device)
-                        
-                        pred_text_val, _ = model(x_valid.cuda(),text_to_model_val, tgt_mask = tgt_mask, tgt_key_padding_mask = tgt_key_padding_mask)
-                        
-                        
-                        if idx_valid_batch < n_valid:
-                            for x in range(x_valid.shape[0]):
-                                pred_token = beam_search(model, x_valid[x,:].unsqueeze(0), device, args.n_vocab, beam_size=10)
-                                list_preds_val.append(tokenizer.decode(pred_token))
-                                gold_pred = tokenizer.decode(text_to_loss_val[x,:].tolist())
-                                list_gold_val.append(gold_pred)
-                                
-                                pred_intent =list(map(str.strip,tokenizer.decode(pred_token).split('_SEP')))[0]
-                                gold_intent = list(map(str.strip,gold_pred.split('_SEP')))[0]
-                                
-                                
-                                if pred_intent == gold_intent:
-                                    correct += 1
-                                total +=1
-                                
-                            
-                        
-                        
-                        if idx_valid_batch == (len(valid_loader) -2):
 
-                            # print("True text (VALID): ", text_transf.int_to_text(text_to_loss_val[0,:].tolist()))
-                            # print("Predicted text (VALID): ", text_transf.int_to_text(torch.argmax(pred_text_val,dim=2)[0,:].tolist()))
-                            # print("True text (VALID): ", text_transf.int_to_text(text_to_loss_val[1,:].tolist()))
-                            # print("Predicted text (VALID): ", text_transf.int_to_text(torch.argmax(pred_text_val,dim=2)[1,:].tolist()))
-                            # print("True text (VALID): ", text_transf.int_to_text(text_to_loss_val[2,:].tolist()))
-                            # print("Predicted text (VALID): ", text_transf.int_to_text(torch.argmax(pred_text_val,dim=2)[2,:].tolist()))
-                            
-                            print("True text (VALID): ", tokenizer.decode(text_to_loss_val[0,:].tolist()))
-                            print("Predicted text (VALID): ", tokenizer.decode(torch.argmax(pred_text_val,dim=2)[0,:].tolist()))
-                            print("True text (VALID): ", tokenizer.decode(text_to_loss_val[1,:].tolist()))
-                            print("Predicted text (VALID): ", tokenizer.decode(torch.argmax(pred_text_val,dim=2)[1,:].tolist()))
-                            print("True text (VALID): ", tokenizer.decode(text_to_loss_val[2,:].tolist()))
-                            print("Predicted text (VALID): ", tokenizer.decode(torch.argmax(pred_text_val,dim=2)[2,:].tolist()))
-                            
-                            
-                        val_text_loss = criterion_text(pred_text_val.permute(0,2,1),text_to_loss_val)
-                        #y_valid = y_valid.squeeze(1)
-                        valid_loss +=  val_text_loss
-                        #logger.add([predic_valid_sce.cpu().argmax(dim=1),y_valid[:,0].cpu(),t_valid], subset = 'test')
-                        #logger_actions.add([predic_valid_act.cpu().argmax(dim=1),y_valid[:,1].cpu(),t_valid], subset = 'test')
-                        #test_text_loss_ += test_text_loss
-                        
-                        #for idx_val in range(x_valid.shape[0]):
-                        #    list_preds_val.append(text_transf.int_to_text(torch.argmax(pred_text_val,dim=2)[idx_val,:].tolist()))
-                        #    list_gold_val.append(text_transf.int_to_text(text_to_loss_val[idx_val,:].tolist()))
-                        
-                        
-                    #print(f"VALID WER at epoch {epoch}: {WER(list_preds_val,list_gold_val)}")
-                    #wer_valid = WER(list_preds_val,list_gold_val)
+                        outputs = model(x)
+                        # _, predictions = torch.max(outputs, 1)
+
+                        loss = criterion(outputs, y)
+
+                        valid_loss +=  loss
                     
-                    #if epoch in range(epochs-5,epochs):
-                    #    last_5_epochs.append(logger.accuracy)
-                    #    last_5_epochs_act.append(logger_actions.accuracy)
+                        
                     valid_loss /= len(valid_loader)
+
+                    print(f"Valid loss: {valid_loss}")
+
                     #test_text_loss_ /= len(test_loader)
                     #if valid_loss < best_loss:
                     pathh = path + f'model_SF_ep{epoch}.pth'
                     torch.save(model.state_dict(),pathh)
                     #print(f"Saved new model at epoch {epoch}!")
                         #best_loss = valid_loss
-                    val_wer = WER(list_preds_val,list_gold_val)
-                    val_cer = CER(list_preds_val,list_gold_val)
-                    intent_accuracy_val = correct/total
-                    print(f"VAL WER at epoch {epoch}: {val_wer}")
-                    print(f"VAL CER at epoch {epoch}: {val_cer}")
-                        
-                    print(f"Total corrected VAL intent predictions at epoch {epoch}: {correct} out of {total}")
-                    print("VAL Intent Accuracy at epoch {epoch}: ", intent_accuracy_val)
-                       
+
                     
-                    print(f"Valid loss at epoch {epoch} and task {task_id}: {valid_loss}")
-                    
-                    #for idx_test_batch, (x_test, _, _, text_test) in enumerate(test_loader):
+                    ########
+                    # TEST #
+                    ########
                     for idx_test_batch, (x_test, text_test) in enumerate(test_loader):
                         #print("Batch TEST #: ",idx_test_batch)
                         x_test = x_test.to(device)
@@ -603,114 +540,7 @@ def main(args):
                             #print("Predicted text (TEST) 20 beams: ", pred_token_20)
                             print("True text (TEST): ", gold_pred)
                         
-                        
-                        # for x in range(x_test.shape[0]):
-                        #     pred_token = beam_search(model, x_test[x,:].unsqueeze(0), device, args.n_vocab, beam_size=20)
-                            
-                        #     #pred_token = rescoring(final_tokens, final_scores, model, x_test[x,:].unsqueeze(0), criterion_ctc, device, ctc_weight = 0.3)
                                 
-                            
-                        
-                        #     list_preds_test.append(tokenizer.decode(pred_token))
-                        #     gold_pred = tokenizer.decode(text_to_loss_test[x,:].tolist())
-                        #     list_gold_test.append(gold_pred)
-                            
-                        #     pred_intent =list(map(str.strip,tokenizer.decode(pred_token).split('_SEP')))[0]
-                        #     #lev_dist = [distance(pred_intent,xx) for xx in reference]
-                            
-                        #     gold_intent = list(map(str.strip,gold_pred.split('_SEP')))[0]
-                        #     #pred_index = np.argmin(lev_dist)
-                           
-                            
-                        #     if pred_intent == gold_intent:
-                        #     #if reference[pred_index] == gold_intent:
-                        #         correct += 1
-                        #     total +=1
-                        
-                        
-                        # if idx_test_batch == 2:
-                            
-                        #     test_wer = WER(list_preds_test,list_gold_test)
-                        #     test_cer = CER(list_preds_test,list_gold_test)
-                        #     intent_accuracy = correct/total
-                        #     print(f"TEST WER at epoch {epoch}: {test_wer}")
-                        #     print(f"TEST CER at epoch {epoch}: {test_cer}")
-                                
-                        #     print(f"Total corrected intent predictions at epoch {epoch}: {correct} out of {total}")
-                        #     print("Intent Accuracy at epoch {epoch}: ", intent_accuracy)
-                        #     break
-                        
-                        # for x in range(x_test.shape[0]):
-                        #     pred_token = greedy_decode(model, x_test[x,:].unsqueeze(0), device)
-                        #     list_preds_test.append(text_transf.int_to_text(pred_token))
-                        #     gold_pred = text_transf.int_to_text(text_to_loss_test[x,:].tolist())
-                        #     list_gold_test.append(gold_pred.replace('@',''))
-                            #list_gold_test.append(text_transf.int_to_text(text_to_loss_test[x,:].tolist()))
-                        # if idx_test_batch == (len(test_loader) -2):
-                        #     pred_token = beam_search(model, x_test[0,:].unsqueeze(0), device, args.n_vocab)
-                        #     pred_token = tokenizer.decode(pred_token)
-                        #     #pred_token_20 = beam_search(model, x_test[0,:].unsqueeze(0), device, args.n_vocab, beam_size=20)
-                        #     #pred_token_20 = tokenizer.decode(pred_token_20)
-                            
-                        #     #pred_token_list_5 = beam_search_nbest(model, x_test[0,:].unsqueeze(0), device, args.n_vocab)
-                        #     #pred_token_list_5 = rescoring()
-                            
-                        #     #pred_token_list_20 = beam_search_nbest(model, x_test[0,:].unsqueeze(0), device, args.n_vocab, beam_size=20)
-                        #     #pred_token_list_20 = rescoring()
-                            
-                            
-                            
-                        #     #pred_token = greedy_decode(model, x_test[0,:].unsqueeze(0), device)
-                        #     gold_pred = tokenizer.decode(text_to_loss_test[0,:].tolist())
-                        #     #gold_pred = gold_pred.replace('@','')[:-1]
-                        #     print("Predicted text (TEST): ", pred_token)
-                        #     #print("Predicted text (TEST) 20 beams: ", pred_token_20)
-                        #     print("True text (TEST): ", gold_pred)
-                            
-                        #     #pred_token = greedy_decode(model, x_test[1,:].unsqueeze(0), device)
-                        #     pred_token = beam_search(model, x_test[1,:].unsqueeze(0), device, args.n_vocab)
-                        #     pred_token = tokenizer.decode(pred_token)
-                        #     #pred_token_20 = beam_search(model, x_test[1,:].unsqueeze(0), device, args.n_vocab, beam_size=20)
-                        #     #pred_token_20 = tokenizer.decode(pred_token)
-                        #     gold_pred = tokenizer.decode(text_to_loss_test[1,:].tolist())
-                        #     #gold_pred = gold_pred.replace('@','')[:-1]
-                        #     print("Predicted text (TEST): ", pred_token)
-                        #     #print("Predicted text (TEST) 20 beams: ", pred_token_20)
-                        #     print("True text (TEST): ", gold_pred)
-                        #     #pred_token = greedy_decode(model, x_test[2,:].unsqueeze(0), device)
-                        #     pred_token = beam_search(model, x_test[2,:].unsqueeze(0), device, args.n_vocab)
-                        #     pred_token = tokenizer.decode(pred_token)
-                        #     #pred_token_20 = beam_search(model, x_test[2,:].unsqueeze(0), device, args.n_vocab, beam_size=20)
-                        #     #pred_token_20 = tokenizer.decode(pred_token_20)
-                        #     gold_pred = tokenizer.decode(text_to_loss_test[2,:].tolist())
-                        #     #gold_pred = gold_pred.replace('@','')[:-1]
-                        #     print("Predicted text (TEST): ", pred_token)
-                        #     #print("Predicted text (TEST) 20 beams: ", pred_token_20)
-                        #     print("True text (TEST): ", gold_pred)
-                            
-                    # if epoch == 10:
-                    #     for idx_test_batch, (x_test,text_test) in enumerate(test_loader):
-                    #         x_test = x_test.to(device)
-                    #         x_test = x_test.transpose(1,2)
-                    #         text_test = text_test.to(device)
-                    #         text_to_loss_test = text_test[:,1:]
-                            
-                    #         for x in range(x_test.shape[0]):
-                    #             # Greedy decoding doesn't remove the SOS token --> pred_token[1:]
-                    #             # Beam search does remove SOS.
-                                
-                    #             pred_token = greedy_decode(model, x_test[x,:].unsqueeze(0), device)
-                    #             list_preds_test.append(text_transf.int_to_text(pred_token))
-                    #             gold_pred = text_transf.int_to_text(text_to_loss_test[x,:].tolist())
-                    #             list_gold_test.append(gold_pred.replace('@',''))
-                    #             #list_gold_test.append(text_transf.int_to_text(text_to_loss_test[x,:].tolist()))
-                        
-                    #     print(f"TEST WER at epoch {epoch}: {WER(list_preds_test,list_gold_test)}")
-                    #     print(f"TEST CER at epoch {epoch}: {CER(list_preds_test,list_gold_test)}")
-                    
-                    #print(f"TEST WER at epoch {epoch}: {WER(list_preds_test,list_gold_test)}")
-                    #wer_test = WER(list_preds_test,list_gold_test)
-                            
   
                     if args.use_wandb:
                         wandb.log({"train_loss": train_loss, "valid_loss": valid_loss,"val_wer": val_wer, "val_cer": val_cer, "int_acc":intent_accuracy_val,
