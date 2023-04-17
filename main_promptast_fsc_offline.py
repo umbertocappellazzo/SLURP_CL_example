@@ -400,12 +400,12 @@ def main(args):
         
         for epoch in range(epochs):
             
-            model.train()
-            train_loss = 0.
-            
-            
-            
             print(f"Epoch #: {epoch}")
+
+            model.train()
+
+            train_loss = 0.
+
             running_loss = 0
 
             ###############
@@ -433,7 +433,7 @@ def main(args):
                 if idx_batch % 50 == 49:
                     print(f'[{epoch + 1}, {idx_batch + 1:5d}] loss: {running_loss / 50:.3f}') 
                     running_loss=0.0
-            break
+            
                 
             ####################
             # EVALUATION PHASE #
@@ -442,16 +442,16 @@ def main(args):
                 
                 model.eval()
                 valid_loss = 0.
-
+                test_loss = 0.
                 train_loss /= len(train_loader)
-
+                list_preds_val = []
+                total = 0.
+                accuracy = 0.
                 print(f"Trainloss at epoch {epoch}: {train_loss}")
 
                 
-                list_preds_val = []
-                list_gold_val = []
-                correct = 0
-                total = 0  
+                
+
                 
                 with torch.inference_mode():
                     
@@ -464,10 +464,10 @@ def main(args):
                         y_valid = y_valid.to(device)
                         
 
-                        outputs = model(x)
+                        outputs = model(x_valid)
                         # _, predictions = torch.max(outputs, 1)
 
-                        loss = criterion(outputs, y)
+                        loss = criterion(outputs, y_valid)
 
                         valid_loss +=  loss
                     
@@ -476,79 +476,44 @@ def main(args):
 
                     print(f"Valid loss: {valid_loss}")
 
-                    #test_text_loss_ /= len(test_loader)
-                    #if valid_loss < best_loss:
+
                     pathh = path + f'model_SF_ep{epoch}.pth'
                     torch.save(model.state_dict(),pathh)
-                    #print(f"Saved new model at epoch {epoch}!")
-                        #best_loss = valid_loss
+                    print(f"Saved new model at epoch {epoch}!")
+                        best_loss = valid_loss
 
                     
                     ########
                     # TEST #
                     ########
                     for idx_test_batch, (x_test, text_test) in enumerate(test_loader):
-                        #print("Batch TEST #: ",idx_test_batch)
-                        x_test = x_test.to(device)
-                        #x_test = x_test.transpose(1,2)
-                        text_test = text_test.to(device).squeeze(1)
-                        text_to_loss_test = text_test[:,1:]
+                        
+                        x_valid = x_valid.to(device)
+                        y_valid = y_valid.to(device)
                         
                         
                         
                         if idx_test_batch == (len(test_loader) -2):
-                             
-                            
-                            pred_token = beam_search(model, x_test[0,:].unsqueeze(0), device, args.n_vocab)
-                            pred_token = tokenizer.decode(pred_token)
-                            #pred_token_20 = beam_search(model, x_test[0,:].unsqueeze(0), device, args.n_vocab, beam_size=20)
-                            #pred_token_20 = tokenizer.decode(pred_token_20)
-                            
-                            #pred_token_list_5 = beam_search_nbest(model, x_test[0,:].unsqueeze(0), device, args.n_vocab)
-                            #pred_token_list_5 = rescoring()
-                            
-                            #pred_token_list_20 = beam_search_nbest(model, x_test[0,:].unsqueeze(0), device, args.n_vocab, beam_size=20)
-                            #pred_token_list_20 = rescoring()
-                            
-                            
-                            
-                            #pred_token = greedy_decode(model, x_test[0,:].unsqueeze(0), device)
-                            gold_pred = tokenizer.decode(text_to_loss_test[0,:].tolist())
-                            #gold_pred = gold_pred.replace('@','')[:-1]
-                            print("Predicted text (TEST): ", pred_token)
-                            #print("Predicted text (TEST) 20 beams: ", pred_token_20)
-                            print("True text (TEST): ", gold_pred)
-                            
-                            #pred_token = greedy_decode(model, x_test[1,:].unsqueeze(0), device)
-                            pred_token = beam_search(model, x_test[1,:].unsqueeze(0), device, args.n_vocab)
-                            pred_token = tokenizer.decode(pred_token)
-                            #pred_token_20 = beam_search(model, x_test[1,:].unsqueeze(0), device, args.n_vocab, beam_size=20)
-                            #pred_token_20 = tokenizer.decode(pred_token)
-                            gold_pred = tokenizer.decode(text_to_loss_test[1,:].tolist())
-                            #gold_pred = gold_pred.replace('@','')[:-1]
-                            print("Predicted text (TEST): ", pred_token)
-                            #print("Predicted text (TEST) 20 beams: ", pred_token_20)
-                            print("True text (TEST): ", gold_pred)
-                            #pred_token = greedy_decode(model, x_test[2,:].unsqueeze(0), device)
-                            pred_token = beam_search(model, x_test[2,:].unsqueeze(0), device, args.n_vocab)
-                            pred_token = tokenizer.decode(pred_token)
-                            #pred_token_20 = beam_search(model, x_test[2,:].unsqueeze(0), device, args.n_vocab, beam_size=20)
-                            #pred_token_20 = tokenizer.decode(pred_token_20)
-                            gold_pred = tokenizer.decode(text_to_loss_test[2,:].tolist())
-                            #gold_pred = gold_pred.replace('@','')[:-1]
-                            print("Predicted text (TEST): ", pred_token)
-                            #print("Predicted text (TEST) 20 beams: ", pred_token_20)
-                            print("True text (TEST): ", gold_pred)
-                        
-                                
+
+                            outputs = model(x_test)
+                            _, predictions = torch.max(outputs, 1)
+                            list_preds_val.append(prediction)
+
+                            loss = criterion(outputs, y_test)
+
+                            test_loss +=  loss
+                            total += labels.size(0)
+                            accuracy += (predicted == labels).sum().item()
+
+
+                    print(f"Test Loss:{test_loss / len(test_loader)}")
+                    intent_accuracy_test = (100 * accuracy / total)
+                    print(f"Test accuracy: {accuracy}")
+                    
+
   
                     if args.use_wandb:
-                        wandb.log({"train_loss": train_loss, "valid_loss": valid_loss,"val_wer": val_wer, "val_cer": val_cer, "int_acc":intent_accuracy_val,
-                                   #"ASR_loss": text_loss_, "CTC_loss": ctc_loss_,
-                                   #"WER_train": wer_train, "WER_valid": wer_valid, 
-                                   #"WER_test": wer_test
-                                   }
-                                  )
+                        wandb.log({"train_loss": train_loss, "valid_loss": valid_loss,"int_acc":intent_accuracy_val})
   
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))
@@ -565,14 +530,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args)
-   
-    # data_path ='/Users/umbertocappellazzo/Desktop/PHD'
-    # a = FluentSpeech(data_path,train=True,download=False)
-    # class_order = [19, 27, 30, 28, 15,  4,  2,  9, 10, 22, 11,  7,  1, 25, 16, 14,  5,
-    #          8, 29, 12, 21, 17,  3, 20, 23,  6, 18, 24, 26,  0, 13]
-    # scenario_train = ClassIncremental(a,increment=3,initial_increment=4,
-    #                                   transformations=[partial(trunc, max_len=16000)],class_order=class_order)
-
-
-
 
