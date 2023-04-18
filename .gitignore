@@ -6,3 +6,4 @@ pycache
 __pycache__/
 *.pyc
 fluent_speech_commands_dataset
+models_PromptASTFSC

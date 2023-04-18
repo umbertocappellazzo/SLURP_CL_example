@@ -1,0 +1,54 @@
+data_path: /home/ste/Datasets
+path_to_save_model': /models_SLURP_wav_SpeechBrain_intentsaug/
+download_dataset: false
+seed: 0
+device: cuda
+batch_size: 32
+num_workers: 10
+lr: 5.0e-05
+eval_every: 1
+epochs: 100
+label_smoothing: 0.0
+weight_decay: 0.1
+warmup_ratio: 2
+n_mels: 768
+n_seq_audio: 400
+n_hidden_audio: 768,
+n_head_audio: 8,
+kernel_size: 3,
+n_layer_audio: 18
+drop: 0.1
+n_vocab: 1000
+n_hidden_text: 768
+n_head_text: 8
+n_layer_text: 6
+n_feedforward: 3072
+feed_forward_expansion_factor: 4
+PAD_token: 0
+memory_size: 0
+fixed_memory: true
+herding: random
+herding_choices:
+- random
+- cluster
+- barycenter
+distillation-tau: 1.0
+feat_space_kd: None
+feat_space_choices:
+- None
+- only_rehe
+- all
+preds_space_kd: None
+preds_space_kd_choices:
+- None
+- only_rehe
+- all
+increment: 3
+initial_increment: 3
+nb_tasks: 6
+offline_train: true
+total_classes: 18
+nb_classes_noCL: 54
+use_wandb: true
+project_name: FSC Prompting on Audio Spectrogram Transformer
+exp_name: FSC_AST_PROMPT_01
