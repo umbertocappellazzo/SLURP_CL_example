@@ -24,7 +24,7 @@ class FluentSpeech(_ContinuumDataset):
     """
     URL = "http://fluent.ai:2052/jf8398hf30f0381738rucj3828chfdnchs.tar.gz"
 
-    def __init__(self, data_path, train: Union[bool, str] = True, download: bool = True):
+    def __init__(self, data_path,max_len_ audio, train: Union[bool, str] = True, download: bool = True):
         if not isinstance(train, bool) and train not in ("train", "valid", "test"):
             raise ValueError(f"`train` arg ({train}) must be a bool or train/valid/test.")
         if isinstance(train, bool):
@@ -70,13 +70,18 @@ class FluentSpeech(_ContinuumDataset):
 
             action, obj, location = items[-3:]
 
-            x.append(os.path.join(base_path, items[1]))
-            y.append(
-                self.class_ids[action+obj+location]    
-            )
+            wav = soundfile.read(pathh)[0]
+            if len(wav) > self.max_len_audio:
+                pass
+            else:
+
+                x.append(os.path.join(base_path, items[1]))
+                y.append(
+                    self.class_ids[action+obj+location]    
+                )
             
             #transcriptions.append(map_transcripts.text_to_int(items[3].lower()))
-            transcriptions.append(items[3].lower())
+                transcriptions.append(items[3].lower())
             
 
         return np.array(x), np.array(y), None, transcriptions #np.array(transcriptions,dtype=object)
