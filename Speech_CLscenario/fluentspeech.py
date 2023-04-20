@@ -69,7 +69,7 @@ class FluentSpeech(_ContinuumDataset):
             
 
             action, obj, location = items[-3:]
-
+            pathh = os.path.join(base_path, items[1])
             wav = soundfile.read(pathh)[0]
             if len(wav) > self.max_len_audio:
                 pass
