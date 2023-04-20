@@ -26,14 +26,9 @@ class PromptASTClassifier(nn.Module):
     def forward(self, input_values):
 
         x = self.emb_layer(input_values)
-        print("embedding size")
-        print(x.size())
         x_prompted = self.prompt(x)['prompted_embedding']
-        print("prompted embedding size:")
-        print(x_prompted.size())
         body_output = self.body_layer(x_prompted)
         out = self.classification_head(torch.mean(body_output.last_hidden_state, 1))
-        # print(f"body output: {body_output}")
         
 
         return out

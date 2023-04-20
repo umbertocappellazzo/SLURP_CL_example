@@ -7,3 +7,5 @@ __pycache__/
 *.pyc
 fluent_speech_commands_dataset
 models_PromptASTFSC
+outputs
+multirun

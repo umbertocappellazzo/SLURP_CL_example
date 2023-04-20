@@ -127,7 +127,7 @@ class Prompt(nn.Module):
                 nn.init.uniform_(self.prompt)
             batched_prompt = self.prompt.unsqueeze(0).expand(x_embed.shape[0], -1, -1)
         
-        print(f"batched prompt shape: {batched_prompt.shape}")
+        # print(f"batched prompt shape: {batched_prompt.shape}")
         # The input with the prompt concatenated to the front. [B, prompt+token, C]
         out['total_prompt_len'] = batched_prompt.shape[1]
         out['prompted_embedding'] = torch.cat([batched_prompt, x_embed], dim=1)

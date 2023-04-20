@@ -1,4 +1,4 @@
-import copy
+import random
 from torch.utils.data import DataLoader
 from functools import partial
 from torch.optim import Adam, AdamW
@@ -7,10 +7,8 @@ from Speech_CLscenario.slurp_aug import Slurp
 from Speech_CLscenario.class_incremental import ClassIncremental
 import torch
 import torch.nn.functional as F
-
 from continuum.metrics import Logger
 import numpy as np
-
 from model_prompt import Seq2SeqTransformer, ModelDimensions
 from tools.utils import get_kdloss,get_kdloss_onlyrehe, freeze_parameters
 import time
@@ -29,27 +27,13 @@ from torchmetrics import WordErrorRate, CharErrorRate
 from torch.optim.lr_scheduler import LambdaLR
 from tokenizers import Tokenizer
 from tqdm import tqdm
-
 # HUGGINGFACE IMPORTS
 from transformers import AutoProcessor, ASTModel, AutoFeatureExtractor
-
 # PROMPT CLASS & PROMPTED MODEL IMPORTS
 from PromptASTClassifier import PromptASTClassifier
 from prompt import Prompt, PromptArgs
-
+#Hydra
 import hydra
-
-
-prompt_args = PromptArgs(length=5, 
-                         embed_dim=768, 
-                         embedding_key='mean', 
-                         prompt_init='uniform',
-                         prompt_pool=True,
-                         prompt_key=True,
-                         pool_size=10,
-                         top_k=3,
-                         batchwise_prompt=False,
-                         prompt_key_init='uniform')
 
 
 # DATA PROCESSING FOR FSC
@@ -67,8 +51,6 @@ def data_processing(data, processor):
         y.append(torch.tensor(intent))
 
     return torch.cat(x), torch.tensor(y)
-        
-  
 
 # OPTIMIZER
 class NoamOpt:
@@ -101,31 +83,24 @@ class NoamOpt:
 @hydra.main(version_base=None, config_path='config', config_name='prompt_ast_fsc')
 def main(args) -> None:
     
-    if args.use_wandb:
-        
+    if args.use_wandb: 
         wandb.init(project=args.project_name, name=args.exp_name,entity="umbertocappellazzo",
                    config = {"lr": args.lr, "weight_decay":args.weight_decay, 
                    "epochs":args.epochs, "batch size": args.batch_size})
-    
-    print(args)
-    
+        
     torch.backends.cudnn.benchmark = True
     torch.backends.cudnn.enabled = True
     
     #os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
-    
-    WER = WordErrorRate()
-    CER = CharErrorRate()
   
     device = torch.device(args.device)
     torch.set_num_threads(20)
     
     # Fix the seed for reproducibility (if desired).
-    #seed = args.seed
-    #torch.manual_seed(seed)
-    #np.random.seed(seed)
-    #random.seed(seed)
-    
+    seed = args.seed
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)  
    
     # FLUENT SPEECH REDEFINITION
     dataset_train = FluentSpeech(args.data_path, train="train", download=False)
@@ -133,7 +108,6 @@ def main(args) -> None:
     dataset_test = FluentSpeech(args.data_path, train="test", download=False)
     
     if args.offline_train:   # Create just 1 task with all classes.
-        
         # Added Splitting Crit = None
         scenario_train = ClassIncremental(dataset_train,nb_tasks=1, splitting_crit=None)
         scenario_valid = ClassIncremental(dataset_valid,nb_tasks=1, splitting_crit=None)
@@ -143,12 +117,9 @@ def main(args) -> None:
         scenario_train = ClassIncremental(dataset_train,increment=args.increment,initial_increment=args.initial_increment,)                               #class_order=class_order)
         scenario_test = ClassIncremental(dataset_valid,increment=args.increment,initial_increment=args.initial_increment,)
                                          #class_order=class_order)
-    
     # Losses employed: CE
-    
     criterion = torch.nn.CrossEntropyLoss(label_smoothing=args.label_smoothing)#,ignore_index=30)
-
-    
+ 
     # Use all the classes for offline training.
     
     initial_classes = args.total_classes if args.offline_train else args.initial_increment
@@ -183,16 +154,16 @@ def main(args) -> None:
             
 
             # FIXED PROMPT ARGS: SHOUD BE ADDED TO ARGPARSE
-            prompt_args = PromptArgs(length=5, 
-                         embed_dim=768, 
-                         embedding_key='mean', 
-                         prompt_init='uniform',
-                         prompt_pool=True,
-                         prompt_key=True,
-                         pool_size=10,
-                         top_k=3,
-                         batchwise_prompt=False,
-                         prompt_key_init='uniform')
+            prompt_args = PromptArgs(length=args.prompt.length, 
+                                        embed_dim=args.prompt.embed_dim, 
+                                        embedding_key=args.prompt.embedding_key, 
+                                        prompt_init=args.prompt.prompt_init,
+                                        prompt_pool=args.prompt.prompt_pool,
+                                        prompt_key=args.prompt.prompt_key,
+                                        pool_size=args.prompt.pool_size,
+                                        top_k=args.prompt.top_k,
+                                        batchwise_prompt=args.prompt.batchwise_prompt,
+                                        prompt_key_init=args.prompt.prompt_key_init)
 
             # AST MODEL   
             model_ckpt = "MIT/ast-finetuned-audioset-10-10-0.4593"
@@ -207,6 +178,12 @@ def main(args) -> None:
                         embedding_size=model.config.hidden_size,
                         num_classes=len(dataset_train.class_ids),
                         prompt_args = prompt_args).to(device)
+            
+            # Freezing model layers for Prompt Tuning
+
+            model.emb_layer.requires_grad_(False)
+            model.body_layer.requires_grad_(False)
+
             print(model)
 
 
@@ -300,7 +277,7 @@ def main(args) -> None:
 
                 optim.optimizer.zero_grad()
 
-                print(x.shape)
+                # print(x.shape)
                 x = x.to(device)
                 y = y.to(device)
                 outputs = model(x)
@@ -410,8 +387,5 @@ def main(args) -> None:
             
             
 if __name__ == "__main__":
-    # parser = argparse.ArgumentParser('CiCL for Spoken Language Understandig (Intent classification) on FSC: train and evaluation',
-    #                                 parents=[get_args_parser()])
-    # args = parser.parse_args()
     main()
 

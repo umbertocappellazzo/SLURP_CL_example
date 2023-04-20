@@ -3,6 +3,7 @@ path_to_save_model: "/models_PromptASTFSC/"
 download_dataset: False
 seed: 0
 device: "cuda"
+
 # Training/inference parameters.
 
 batch_size: 32
@@ -14,27 +15,32 @@ label_smoothing: 0.
 weight_decay: 0.1 
 warmup_ratio: 2 
 
+# Prompting parameters
+
+
+prompt: 
+  length: 5 
+  embed_dim: 768
+  embedding_key: 'mean'
+  prompt_init: 'uniform'
+  prompt_pool: True
+  prompt_key: True
+  pool_size: 10
+  top_k: 3
+  batchwise_prompt: False
+  prompt_key_init: 'uniform'
+
 
 # Encoder hyperparameters.
 
 n_mels: 768 
 n_seq_audio: 400
-n_hidden_audio: 768,
-n_head_audio: 8, 
-kernel_size: 3, 
+n_hidden_audio: 768 
+n_head_audio: 8  
+kernel_size: 3  
 n_layer_audio: 18 
 drop: 0.1 
 
-# Decoder hyperparameters.
-
-n_vocab: 1000 
-
-n_hidden_text: 768
-n_head_text: 8
-n_layer_text: 6 
-n_feedforward: 3072
-feed_forward_expansion_factor: 4 
-PAD_token: 0 
 
 # Rehearsal memory.
 
