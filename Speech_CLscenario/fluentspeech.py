@@ -24,7 +24,7 @@ class FluentSpeech(_ContinuumDataset):
     """
     URL = "http://fluent.ai:2052/jf8398hf30f0381738rucj3828chfdnchs.tar.gz"
 
-    def __init__(self, data_path,max_len_ audio, train: Union[bool, str] = True, download: bool = True):
+    def __init__(self, data_path,max_len_audio, train: Union[bool, str] = True, download: bool = True):
         if not isinstance(train, bool) and train not in ("train", "valid", "test"):
             raise ValueError(f"`train` arg ({train}) must be a bool or train/valid/test.")
         if isinstance(train, bool):
