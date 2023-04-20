@@ -1,4 +1,4 @@
-data_path: "/home/ste/Datasets"
+data_path: "/home/sciapponi"
 path_to_save_model: "/models_PromptASTFSC/"
 download_dataset: False
 seed: 0

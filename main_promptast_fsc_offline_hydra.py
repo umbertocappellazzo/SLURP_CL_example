@@ -84,17 +84,19 @@ class NoamOpt:
 def main(args) -> None:
     
     if args.use_wandb: 
-        wandb.init(project=args.project_name, name=args.exp_name,entity="umbertocappellazzo",
+        wandb.init(project=args.project_name, name=args.exp_name,entity="sciapponi",
                    config = {"lr": args.lr, "weight_decay":args.weight_decay, 
                    "epochs":args.epochs, "batch size": args.batch_size})
         
     torch.backends.cudnn.benchmark = True
     torch.backends.cudnn.enabled = True
     
-    #os.environ['CUDA_VISIBLE_DEVICES'] = "0,1"
-  
+    # os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+    
     device = torch.device(args.device)
+    torch.cuda.set_device(1)
     torch.set_num_threads(20)
+    
     
     # Fix the seed for reproducibility (if desired).
     seed = args.seed
@@ -103,9 +105,9 @@ def main(args) -> None:
     random.seed(seed)  
    
     # FLUENT SPEECH REDEFINITION
-    dataset_train = FluentSpeech(args.data_path, train="train", download=False)
-    dataset_valid = FluentSpeech(args.data_path, train="valid", download=False)
-    dataset_test = FluentSpeech(args.data_path, train="test", download=False)
+    dataset_train = FluentSpeech(args.data_path, max_len_audio=64000, train="train", download=False)
+    dataset_valid = FluentSpeech(args.data_path,max_len_audio=64000, train="valid", download=False)
+    dataset_test = FluentSpeech(args.data_path,max_len_audio=64000, train="test", download=False)
     
     if args.offline_train:   # Create just 1 task with all classes.
         # Added Splitting Crit = None
@@ -181,7 +183,7 @@ def main(args) -> None:
             
             # Freezing model layers for Prompt Tuning
 
-            model.emb_layer.requires_grad_(False)
+            # model.emb_layer.requires_grad_(False)
             model.body_layer.requires_grad_(False)
 
             print(model)
@@ -276,7 +278,7 @@ def main(args) -> None:
                 
 
                 optim.optimizer.zero_grad()
-
+                torch.cuda.empty_cache() 
                 # print(x.shape)
                 x = x.to(device)
                 y = y.to(device)
