@@ -285,7 +285,7 @@ def main(args) -> None:
                 outputs = model(x)
                 loss = criterion(outputs['classification_head'], y)
                 # print(f"loss1: {loss}")
-                loss = loss - 0.5 * outputs['reduce_sim']
+                loss = loss - 0.5 * outputs['reduce_sim'] #0.5= standard lambda coefficient used on the L2P Paper. Other Coeff. coulf be tested.
                 # print(f"loss2: {loss}")
                 running_loss += loss.item()#*0.7 + ctc_loss*0.3       #*0.50 + 0.50*ctc_loss
                 
@@ -333,7 +333,7 @@ def main(args) -> None:
                         # _, predictions = torch.max(outputs, 1)
 
                         loss = criterion(outputs['classification_head'], y_valid)
-                        loss = loss - 0.5 * outputs['reduce_sim']
+                        # loss = loss - 0.5 * outputs['reduce_sim']
 
                         valid_loss +=  loss
                         
@@ -367,7 +367,7 @@ def main(args) -> None:
                             list_preds_val.append(predictions)
 
                             loss = criterion(outputs['classification_head'], y_test)
-                            loss = loss - 0.5 * outputs['reduce_sim']
+                            # loss = loss - 0.5 * outputs['reduce_sim']
                             test_loss +=  loss
                             total += y_test.size(0)
                             accuracy += (predictions == y_test).sum().item()
