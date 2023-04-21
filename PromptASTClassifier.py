@@ -25,11 +25,14 @@ class PromptASTClassifier(nn.Module):
 
     def forward(self, input_values):
 
+        out = {}
+        
         x = self.emb_layer(input_values)
+        x_reduce_sim = self.prompt(x)['reduce_sim']
         x_prompted = self.prompt(x)['prompted_embedding']
         body_output = self.body_layer(x_prompted)
-        out = self.classification_head(torch.mean(body_output.last_hidden_state, 1))
-        
+        out['classification_head'] = self.classification_head(torch.mean(body_output.last_hidden_state, 1))
+        out['reduce_sim'] = x_reduce_sim
 
         return out
 

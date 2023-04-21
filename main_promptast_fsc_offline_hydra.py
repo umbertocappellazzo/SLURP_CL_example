@@ -94,7 +94,7 @@ def main(args) -> None:
     # os.environ['CUDA_VISIBLE_DEVICES'] = "1"
     
     device = torch.device(args.device)
-    torch.cuda.set_device(1)
+    # torch.cuda.set_device(1)
     torch.set_num_threads(20)
     
     
@@ -283,8 +283,10 @@ def main(args) -> None:
                 x = x.to(device)
                 y = y.to(device)
                 outputs = model(x)
-                loss = criterion(outputs, y)
-  
+                loss = criterion(outputs['classification_head'], y)
+                # print(f"loss1: {loss}")
+                loss = loss - 0.5 * outputs['reduce_sim']
+                # print(f"loss2: {loss}")
                 running_loss += loss.item()#*0.7 + ctc_loss*0.3       #*0.50 + 0.50*ctc_loss
                 
             
@@ -330,7 +332,8 @@ def main(args) -> None:
                         outputs = model(x_valid)
                         # _, predictions = torch.max(outputs, 1)
 
-                        loss = criterion(outputs, y_valid)
+                        loss = criterion(outputs['classification_head'], y_valid)
+                        loss = loss - 0.5 * outputs['reduce_sim']
 
                         valid_loss +=  loss
                         
@@ -363,8 +366,8 @@ def main(args) -> None:
                             _, predictions = torch.max(outputs, 1)
                             list_preds_val.append(predictions)
 
-                            loss = criterion(outputs, y_test)
-
+                            loss = criterion(outputs['classification_head'], y_test)
+                            loss = loss - 0.5 * outputs['reduce_sim']
                             test_loss +=  loss
                             total += y_test.size(0)
                             accuracy += (predictions == y_test).sum().item()
