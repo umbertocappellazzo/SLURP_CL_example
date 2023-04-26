@@ -376,8 +376,8 @@ def main(args) -> None:
 
                     test_loss /= len(test_loader)
                     print(f"Test Loss:{test_loss}")
-                    intent_accuracy_test = (100 * accuracy // total)
-                    print(f"Test accuracy: {accuracy}")
+                    intent_accuracy_test = (100 * accuracy / total)
+                    print(f"Intent Accuracy Test: {intent_accuracy_test}")
                     
 
   
