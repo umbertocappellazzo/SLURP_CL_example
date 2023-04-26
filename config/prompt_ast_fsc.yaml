@@ -22,13 +22,13 @@ prompt:
   length: 5 
   embed_dim: 768
   embedding_key: 'mean'
-  prompt_init: 'uniform'
+  prompt_init: 'zero'
   prompt_pool: True
   prompt_key: True
   pool_size: 10
   top_k: 1
   batchwise_prompt: False
-  prompt_key_init: 'uniform'
+  prompt_key_init: 'zero'
 
 
 # Encoder hyperparameters.

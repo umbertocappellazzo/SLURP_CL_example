@@ -365,18 +365,17 @@ def main(args) -> None:
                         
                         
                         
-                        if idx_test_batch == (len(test_loader) -2):
+                        # if idx_test_batch == (len(test_loader) -2):
 
-                            outputs = model(x_test)
-                            _, predictions = torch.max(outputs['classification_head'], 1)
-                            list_preds_val.append(predictions)
-
-                            loss = criterion(outputs['classification_head'], y_test)
-                            # loss = loss - 0.5 * outputs['reduce_sim']
-                            test_loss +=  loss
-                            total += y_test.size(0)
-                            accuracy += (predictions == y_test).sum().item()
-
+                        outputs = model(x_test)
+                        _, predictions = torch.max(outputs['classification_head'], 1)
+                        list_preds_val.append(predictions)
+                        loss = criterion(outputs['classification_head'], y_test)
+                        # loss = loss - 0.5 * outputs['reduce_sim']
+                        test_loss +=  loss
+                        total += y_test.size(0)
+                        accuracy += (predictions == y_test).sum().item()
+                    
                     test_loss /= len(test_loader)
                     print(f"Test Loss:{test_loss}")
                     intent_accuracy_test = (100 * accuracy / total)
