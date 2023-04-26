@@ -30,8 +30,7 @@ from tqdm import tqdm
 # HUGGINGFACE IMPORTS
 from transformers import AutoProcessor, ASTModel, AutoFeatureExtractor
 # PROMPT CLASS & PROMPTED MODEL IMPORTS
-from PromptASTClassifier import PromptASTClassifier
-from prompt import Prompt, PromptArgs
+from ASTClassifier import ASTClassifier
 #Hydra
 import hydra
 
@@ -156,35 +155,31 @@ def main(args) -> None:
             
 
             # FIXED PROMPT ARGS: SHOUD BE ADDED TO ARGPARSE
-            prompt_args = PromptArgs(length=args.prompt.length, 
-                                        embed_dim=args.prompt.embed_dim, 
-                                        embedding_key=args.prompt.embedding_key, 
-                                        prompt_init=args.prompt.prompt_init,
-                                        prompt_pool=args.prompt.prompt_pool,
-                                        prompt_key=args.prompt.prompt_key,
-                                        pool_size=args.prompt.pool_size,
-                                        top_k=args.prompt.top_k,
-                                        batchwise_prompt=args.prompt.batchwise_prompt,
-                                        prompt_key_init=args.prompt.prompt_key_init)
+            # prompt_args = PromptArgs(length=args.prompt.length, 
+            #                             embed_dim=args.prompt.embed_dim, 
+            #                             embedding_key=args.prompt.embedding_key, 
+            #                             prompt_init=args.prompt.prompt_init,
+            #                             prompt_pool=args.prompt.prompt_pool,
+            #                             prompt_key=args.prompt.prompt_key,
+            #                             pool_size=args.prompt.pool_size,
+            #                             top_k=args.prompt.top_k,
+            #                             batchwise_prompt=args.prompt.batchwise_prompt,
+            #                             prompt_key_init=args.prompt.prompt_key_init)
 
             # AST MODEL   
             model_ckpt = "MIT/ast-finetuned-audioset-10-10-0.4593"
-            # MODEL REDEFINITION FROM PRETRAINED
+            # # MODEL REDEFINITION FROM PRETRAINED
 
-            # pretrained model
-            model = ASTModel.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593")
+            # # pretrained model
+            # model = ASTModel.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593")
             torch.cuda.empty_cache() 
             # Prompts added
-            model = PromptASTClassifier(emb_layer = model._modules['embeddings'],
-                        body_layer = model._modules['encoder'],
-                        embedding_size=model.config.hidden_size,
-                        num_classes=len(dataset_train.class_ids),
-                        prompt_args = prompt_args).to(device)
+            model = ASTClassifier(num_classes=len(dataset_train.class_ids)).to(device)
             
             # Freezing model layers for Prompt Tuning
 
             # model.emb_layer.requires_grad_(False)
-            model.body_layer.requires_grad_(False)
+            # model.body_layer.requires_grad_(False)
 
             # print(model)
 
@@ -285,9 +280,9 @@ def main(args) -> None:
                 x = x.to(device)
                 y = y.to(device)
                 outputs = model(x)
-                loss = criterion(outputs['classification_head'], y)
+                loss = criterion(outputs, y)
                 # print(f"loss1: {loss}")
-                loss = loss - 0.5 * outputs['reduce_sim'] #0.5= standard lambda coefficient used on the L2P Paper. Other Coeff. coulf be tested.
+                # loss = loss - 0.5 * outputs['reduce_sim'] #0.5= standard lambda coefficient used on the L2P Paper. Other Coeff. coulf be tested.
                 # print(f"loss2: {loss}")
 
                 # if idx_batch % 8 == 7:
@@ -328,7 +323,8 @@ def main(args) -> None:
                     ##############
                     # VALIDATION #
                     ##############
-                    for idx_valid_batch, (x_valid, y_valid) in enumerate(valid_loader):
+                    print("Validation:")
+                    for idx_valid_batch, (x_valid, y_valid) in tqdm(enumerate(valid_loader), total=len(valid_loader)):
                         
                         x_valid = x_valid.to(device)
                         y_valid = y_valid.to(device)
@@ -337,7 +333,7 @@ def main(args) -> None:
                         outputs = model(x_valid)
                         # _, predictions = torch.max(outputs, 1)
 
-                        loss = criterion(outputs['classification_head'], y_valid)
+                        loss = criterion(outputs, y_valid)
                         # loss = loss - 0.5 * outputs['reduce_sim']
 
                         valid_loss +=  loss
@@ -358,7 +354,8 @@ def main(args) -> None:
                     ########
                     # TEST #
                     ########
-                    for idx_test_batch, (x_test, y_test) in enumerate(test_loader):
+                    print("Test:")
+                    for idx_test_batch, (x_test, y_test) in tqdm(enumerate(test_loader), total=len(test_loader)):
                         
                         x_test = x_test.to(device)
                         y_test = y_test.to(device)
@@ -368,10 +365,10 @@ def main(args) -> None:
                         if idx_test_batch == (len(test_loader) -2):
 
                             outputs = model(x_test)
-                            _, predictions = torch.max(outputs['classification_head'], 1)
+                            _, predictions = torch.max(outputs, 1)
                             list_preds_val.append(predictions)
 
-                            loss = criterion(outputs['classification_head'], y_test)
+                            loss = criterion(outputs, y_test)
                             # loss = loss - 0.5 * outputs['reduce_sim']
                             test_loss +=  loss
                             total += y_test.size(0)
@@ -379,7 +376,7 @@ def main(args) -> None:
 
                     test_loss /= len(test_loader)
                     print(f"Test Loss:{test_loss}")
-                    intent_accuracy_test = (100 * accuracy / total)
+                    intent_accuracy_test = (100 * accuracy // total)
                     print(f"Test accuracy: {accuracy}")
                     
 
