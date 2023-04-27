@@ -70,15 +70,17 @@ def main():
                     num_classes = 31,
                     prompt_args = prompt_args)
     # print(ast)
-    print(len(dataset[65]["audio"]["array"]))
-    # sf.write('amazing_sound.wav', np.array(dataset[65]["audio"]["array"]), sampling_rate)
-    inputs = processor(dataset[65]["audio"]["array"], sampling_rate=sampling_rate, return_tensors="pt")
-    print(inputs['input_values'][0].shape)
+    # print(len(dataset[65]["audio"]["array"]))
+    # # sf.write('amazing_sound.wav', np.array(dataset[65]["audio"]["array"]), sampling_rate)
+    # inputs = processor(dataset[65]["audio"]["array"], sampling_rate=sampling_rate, return_tensors="pt")
+    # print(inputs['input_values'][0].shape)
 
-    with torch.no_grad():
-        outputs = ast(**inputs)
-        last_hidden_states = outputs
-    print(list(last_hidden_states.shape))
-    print(last_hidden_states)
+    # with torch.no_grad():
+    #     outputs = ast(**inputs)
+    #     last_hidden_states = outputs
+    # print(list(last_hidden_states.shape))
+    # print(last_hidden_states)
+    # print([p.size() for p in ast.prompt.parameters()])
+    print(f"Prompt Parameters:{sum(p.numel() for p in ast.prompt.parameters() if p.requires_grad)}")
 if __name__=='__main__':
     main()

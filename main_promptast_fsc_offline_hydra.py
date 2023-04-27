@@ -82,11 +82,16 @@ class NoamOpt:
 
 @hydra.main(version_base=None, config_path='config', config_name='prompt_ast_fsc')
 def main(args) -> None:
-    
+
+
     if args.use_wandb: 
-        wandb.init(project=args.project_name, name=args.exp_name,entity="sciapponi",
-                   config = {"lr": args.lr, "weight_decay":args.weight_decay, 
-                   "epochs":args.epochs, "batch size": args.batch_size})
+        wandb.init( project=args.project_name, 
+                    name=args.exp_name,
+                    entity="sciapponi",
+                    config = {  "lr": args.lr, 
+                                "weight_decay":args.weight_decay, 
+                                "epochs":args.epochs, 
+                                "batch size": args.batch_size})
         
     torch.backends.cudnn.benchmark = True
     torch.backends.cudnn.enabled = True
