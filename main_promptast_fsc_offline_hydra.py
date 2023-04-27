@@ -199,7 +199,9 @@ def main(args) -> None:
             print('Number of params of the model:', n_parameters)
             n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
             print('Number of trainable params of the model:', n_parameters)
-
+            print(f"Prompt Parameters:{sum(p.numel() for p in model.prompt.parameters() if p.requires_grad)}")
+            print(f"Encoder Parameters:{sum(p.numel() for p in model.body_layer.parameters() if p.requires_grad)}")
+            print(f"Classification Head Parameters:{sum(p.numel() for p in model.classification_head.parameters() if p.requires_grad)}")
 
         
         
