@@ -97,7 +97,7 @@ def main(args) -> None:
                                 "prompt top k": args.prompt.top_k
                                 })
     
-    print(f"Prompt Length:{args.prompt.length}    Prompt Pool Size:{args.prompt.pool_size}")
+    print(f"Prompt Length:{args.prompt.length}    Prompt Pool Size:{args.prompt.pool_size}    Prompt TopK:{args.prompt.top_k}")
     torch.backends.cudnn.benchmark = True
     torch.backends.cudnn.enabled = True
     
