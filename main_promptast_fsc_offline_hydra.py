@@ -93,7 +93,8 @@ def main(args) -> None:
                                 "epochs":args.epochs, 
                                 "batch size": args.batch_size,
                                 "prompt length": args.prompt.length,
-                                "prompt pool size": args.prompt.pool_size
+                                "prompt pool size": args.prompt.pool_size,
+                                "prompt top k": args.prompt.top_k
                                 })
     
     print(f"Prompt Length:{args.prompt.length}    Prompt Pool Size:{args.prompt.pool_size}")

@@ -40,13 +40,13 @@ class PromptASTClassifier(nn.Module):
 
 def main():
 
-    prompt_args = PromptArgs(length=5, 
+    prompt_args = PromptArgs(length=10, 
                          embed_dim=768, 
                          embedding_key='mean', 
                          prompt_init='zero',
                          prompt_pool=True,
                          prompt_key=True,
-                         pool_size=10,
+                         pool_size=50,
                          top_k=3,
                          batchwise_prompt=False,
                          prompt_key_init='uniform')
@@ -80,7 +80,9 @@ def main():
     #     last_hidden_states = outputs
     # print(list(last_hidden_states.shape))
     # print(last_hidden_states)
-    # print([p.size() for p in ast.prompt.parameters()])
+    # print(ast)
+    print([p.size() for p in ast.prompt.parameters()])
+
     print(f"Prompt Parameters:{sum(p.numel() for p in ast.prompt.parameters() if p.requires_grad)}")
 if __name__=='__main__':
     main()
