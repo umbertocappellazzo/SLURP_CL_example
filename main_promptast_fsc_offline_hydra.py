@@ -95,7 +95,8 @@ def main(args) -> None:
                                 "prompt length": args.prompt.length,
                                 "prompt pool size": args.prompt.pool_size
                                 })
-        
+    
+    print(f"Prompt Length:{args.prompt.length}    Prompt Pool Size:{args.prompt.pool_size}")
     torch.backends.cudnn.benchmark = True
     torch.backends.cudnn.enabled = True
     
