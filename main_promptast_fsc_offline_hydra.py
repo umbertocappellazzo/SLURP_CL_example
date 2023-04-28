@@ -91,7 +91,10 @@ def main(args) -> None:
                     config = {  "lr": args.lr, 
                                 "weight_decay":args.weight_decay, 
                                 "epochs":args.epochs, 
-                                "batch size": args.batch_size})
+                                "batch size": args.batch_size,
+                                "prompt length": args.prompt.length,
+                                "prompt pool size": args.prompt.pool_size
+                                })
         
     torch.backends.cudnn.benchmark = True
     torch.backends.cudnn.enabled = True
