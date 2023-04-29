@@ -304,7 +304,7 @@ def main(args) -> None:
 
                 # if idx_batch % 8 == 7:
                 loss.backward()
-                optimizer.step()
+                optim.optimizer.step()
                 
                 running_loss += loss.item()
                 
