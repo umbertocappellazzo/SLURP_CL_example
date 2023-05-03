@@ -265,9 +265,9 @@ def main(args) -> None:
             model.train()
 
             train_loss = 0.
-
             running_loss = 0
-
+            total = 0.
+            accuracy = 0.
             ###############
             # TRAIN PHASE #
             ###############
