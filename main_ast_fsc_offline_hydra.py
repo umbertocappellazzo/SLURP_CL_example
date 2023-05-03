@@ -178,7 +178,7 @@ def main(args) -> None:
             
             # Freezing model layers for Prompt Tuning
 
-            # model.emb_layer.requires_grad_(False)
+            model.encoder.requires_grad_(False)
             # model.body_layer.requires_grad_(False)
 
             # print(model)
