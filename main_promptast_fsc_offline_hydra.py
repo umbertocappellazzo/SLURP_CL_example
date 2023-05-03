@@ -297,24 +297,32 @@ def main(args) -> None:
                 x = x.to(device)
                 y = y.to(device)
                 outputs = model(x)
-                loss = criterion(outputs['classification_head'], y)
+                _, predictions = torch.max(outputs, 1)
+
+                loss = criterion(outputs, y)
                 # print(f"loss1: {loss}")
-                loss = loss - 0.5 * outputs['reduce_sim'] #0.5= standard lambda coefficient used on the L2P Paper. Other Coeff. coulf be tested.
+                # loss = loss - 0.5 * outputs['reduce_sim'] #0.5= standard lambda coefficient used on the L2P Paper. Other Coeff. coulf be tested.
                 # print(f"loss2: {loss}")
 
                 # if idx_batch % 8 == 7:
                 loss.backward()
-                optim.optimizer.step()
+                optimizer.step()
                 
                 running_loss += loss.item()
                 
                 train_loss += loss.detach().item()
+
+                total += y.size(0)
+                accuracy += (predictions == y).sum().item() 
 
                 
 
                 if idx_batch % 50 == 49:
                     print(f'[{epoch + 1}, {idx_batch + 1:5d}] loss: {running_loss / 50:.3f}') 
                     running_loss=0.0
+
+            intent_accuracy_train = (100 * accuracy / total)
+            print(f"Intent Accuracy Train: {intent_accuracy_train}")
                 
                 
             ####################
@@ -397,7 +405,8 @@ def main(args) -> None:
 
   
                     if args.use_wandb:
-                        wandb.log({"train_loss": train_loss, "valid_loss": valid_loss, "test_loss": test_loss, "inttent_acc_test":intent_accuracy_test})
+                        wandb.log({"train_loss": train_loss, "valid_loss": valid_loss, "test_loss": test_loss, "intent_acc_test":intent_accuracy_test, "intent_acc_train":intent_accuracy_train})
+            
             
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))

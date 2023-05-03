@@ -40,7 +40,7 @@ class PromptASTClassifier(nn.Module):
 
 def main():
 
-    prompt_args = PromptArgs(length=10, 
+    prompt_args = PromptArgs(length=1, 
                          embed_dim=768, 
                          embedding_key='mean', 
                          prompt_init='zero',
