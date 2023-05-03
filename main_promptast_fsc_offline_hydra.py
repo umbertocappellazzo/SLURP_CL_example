@@ -297,9 +297,9 @@ def main(args) -> None:
                 x = x.to(device)
                 y = y.to(device)
                 outputs = model(x)
-                _, predictions = torch.max(outputs, 1)
+                _, predictions = torch.max(outputs['classification_head'], 1)
 
-                loss = criterion(outputs, y)
+                loss = criterion(outputs['classification_head'], y)
                 # print(f"loss1: {loss}")
                 # loss = loss - 0.5 * outputs['reduce_sim'] #0.5= standard lambda coefficient used on the L2P Paper. Other Coeff. coulf be tested.
                 # print(f"loss2: {loss}")
