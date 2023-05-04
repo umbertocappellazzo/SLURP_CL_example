@@ -17,3 +17,13 @@ class ASTClassifier(nn.Module):
         out = self.classification_head(torch.mean(x.last_hidden_state, 1))
 
         return out
+    
+
+
+if __name__=="__main__":
+    model_ckpt = "MIT/ast-finetuned-audioset-10-10-0.4593"
+
+    torch.cuda.empty_cache() 
+    # Prompts added
+    model = ASTClassifier(num_classes=32).to("cpu")
+    print(model.encoder.encoder)
