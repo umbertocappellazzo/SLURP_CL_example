@@ -319,7 +319,7 @@ def main(args) -> None:
                 if idx_batch % 50 == 49:
                     print(f'[{epoch + 1}, {idx_batch + 1:5d}] loss: {running_loss / 50:.3f}') 
                     running_loss=0.0
-                    print(model.prompt.prompt)
+                    # print(model.prompt.prompt)
 
             intent_accuracy_train = (100 * accuracy / total)
             print(f"Intent Accuracy Train: {intent_accuracy_train}")

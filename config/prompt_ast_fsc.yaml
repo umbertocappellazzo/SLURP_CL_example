@@ -27,7 +27,7 @@ prompt:
   prompt_key: True
   pool_size: 10
   top_k: 1
-  batchwise_prompt: False
+  batchwise_prompt: True
   prompt_key_init: 'uniform'
 
 
