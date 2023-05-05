@@ -105,7 +105,7 @@ class Prompt(nn.Module):
             batched_prompt = batched_prompt_raw.reshape(batch_size, top_k * length, c) # B, top_k * length, C
             # print(f"prompt: {batched_prompt_raw}")
             out['prompt_idx'] = idx
-            print(f"prompt index:{idx}")
+            # print(f"prompt index:{idx}")
             # Debugging, return sim as well
             out['prompt_norm'] = prompt_norm
             out['x_embed_norm'] = x_embed_norm
