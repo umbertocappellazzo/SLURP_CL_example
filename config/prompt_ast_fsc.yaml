@@ -21,7 +21,7 @@ warmup_ratio: 2
 prompt: 
   length: 5 
   embed_dim: 768
-  embedding_key: 'mean'
+  embedding_key: 'mean_max'
   prompt_init: 'uniform'
   prompt_pool: True
   prompt_key: True
